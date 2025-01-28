@@ -20,6 +20,9 @@
 #define ADDEDITAUTOPROFILEDIALOG_H
 
 #include <QFileDialog>
+#if defined(Q_OS_WIN)
+    #include "capturedwindowinfodialog.h"
+#endif
 
 class AutoProfileInfo;
 class AntiMicroSettings;
@@ -68,10 +71,10 @@ class AddEditAutoProfileDialog : public QDialog
     void checkForReservedUniques(int index);
     void checkForDefaultStatus();
     void windowPropAssignment(CapturedWindowInfoDialog *dialog);
-    void on_setPartialCheckBox_stateChanged(int arg1);
     void checkDefaultCheckbox(const QString &text);
 #ifdef Q_OS_WIN
     void openWinAppProfileDialog();
+    void callWindowPropAssignment();
     void captureWindowsApplicationPath();
 #else
     void showCaptureHelpWindow();
@@ -91,6 +94,12 @@ class AddEditAutoProfileDialog : public QDialog
     QString originalExe;
     QString originalWindowClass;
     QString originalWindowName;
+#ifdef Q_OS_WIN
+    CapturedWindowInfoDialog *m_capture_window_info_dialog;
+#endif
+
+    void check_profile_file();
+    void check_executable_file();
 };
 
 #endif // ADDEDITAUTOPROFILEDIALOG_H

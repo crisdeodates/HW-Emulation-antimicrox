@@ -19,7 +19,7 @@
 #ifndef MOUSESETTINGSDIALOG_H
 #define MOUSESETTINGSDIALOG_H
 
-#include "joybutton.h"
+#include "joybuttontypes/joybutton.h"
 
 #include <QDialog>
 
@@ -42,7 +42,7 @@ class MouseSettingsDialog : public QDialog
     JoyButton::JoyExtraAccelerationCurve getExtraAccelCurveForIndex(int index);
 
     Ui::MouseSettingsDialog *ui;
-    QTime lastMouseStatUpdate;
+    QElapsedTimer lastMouseStatUpdate;
 
   public slots:
     void changeSettingsWidgetStatus(int index);

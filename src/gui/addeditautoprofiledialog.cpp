@@ -255,19 +255,21 @@ void AddEditAutoProfileDialog::showCaptureHelpWindow()
         box->show();
 
         UnixCaptureWindowUtility *util = new UnixCaptureWindowUtility();
-        QThread *thread = new QThread; // QTHREAD(this)
-        util->moveToThread(thread);
+        QThread *capture_window_thr = new QThread; // QTHREAD(this)
+        capture_window_thr->setObjectName("capture_window_thr");
 
-        connect(thread, &QThread::started, util, &UnixCaptureWindowUtility::attemptWindowCapture);
-        connect(util, &UnixCaptureWindowUtility::captureFinished, thread, &QThread::quit);
+        util->moveToThread(capture_window_thr);
+
+        connect(capture_window_thr, &QThread::started, util, &UnixCaptureWindowUtility::attemptWindowCapture);
+        connect(util, &UnixCaptureWindowUtility::captureFinished, capture_window_thr, &QThread::quit);
         connect(util, &UnixCaptureWindowUtility::captureFinished, box, &QMessageBox::hide);
         connect(
             util, &UnixCaptureWindowUtility::captureFinished, this, [this, util]() { checkForGrabbedWindow(util); },
             Qt::QueuedConnection);
 
-        connect(thread, &QThread::finished, box, &QMessageBox::deleteLater);
-        connect(util, &UnixCaptureWindowUtility::destroyed, thread, &QThread::deleteLater);
-        thread->start();
+        connect(capture_window_thr, &QThread::finished, box, &QMessageBox::deleteLater);
+        connect(util, &UnixCaptureWindowUtility::destroyed, capture_window_thr, &QThread::deleteLater);
+        capture_window_thr->start();
     }
 
     #endif
@@ -326,7 +328,6 @@ void AddEditAutoProfileDialog::checkForGrabbedWindow(UnixCaptureWindowUtility *u
 
         util->deleteLater();
     }
-
     #endif
 }
 #endif
@@ -337,6 +338,10 @@ void AddEditAutoProfileDialog::windowPropAssignment(CapturedWindowInfoDialog *di
     disconnect(ui->winClassLineEdit, &QLineEdit::textChanged, this, &AddEditAutoProfileDialog::checkForDefaultStatus);
     disconnect(ui->winNameLineEdit, &QLineEdit::textChanged, this, &AddEditAutoProfileDialog::checkForDefaultStatus);
 
+    ui->applicationLineEdit->clear();
+    ui->winClassLineEdit->clear();
+    ui->winNameLineEdit->clear();
+
 #ifdef WITH_X11
     if (dialog->useFullWindowPath() && dialog->getSelectedOptions() & CapturedWindowInfoDialog::WindowPath)
     {
@@ -344,35 +349,16 @@ void AddEditAutoProfileDialog::windowPropAssignment(CapturedWindowInfoDialog *di
     } else if (!dialog->useFullWindowPath() && dialog->getSelectedOptions() & CapturedWindowInfoDialog::WindowPath)
     {
         ui->applicationLineEdit->setText(QFileInfo(dialog->getWindowPath()).fileName());
-    } else
-    {
-#endif
-        ui->applicationLineEdit->clear();
-#ifdef WITH_X11
     }
-#endif
 
-#ifdef WITH_X11
     if (dialog->getSelectedOptions() & CapturedWindowInfoDialog::WindowClass)
     {
         ui->winClassLineEdit->setText(dialog->getWindowClass());
-    } else
-    {
-#endif
-        ui->winClassLineEdit->clear();
-#ifdef WITH_X11
     }
-#endif
 
-#ifdef WITH_X11
     if (dialog->getSelectedOptions() & CapturedWindowInfoDialog::WindowName)
     {
         ui->winNameLineEdit->setText(dialog->getWindowName());
-    } else
-    {
-#endif
-        ui->winNameLineEdit->clear();
-#ifdef WITH_X11
     }
 #endif
 
@@ -400,70 +386,69 @@ void AddEditAutoProfileDialog::checkForDefaultStatus()
 }
 
 /**
- * @brief Validate the form that is contained in this window
+ * @throw std::runtime_error
  */
-void AddEditAutoProfileDialog::accept()
+void AddEditAutoProfileDialog::check_profile_file()
 {
-    bool validForm = true;
-    bool propertyFound = false;
-    QString errorString = QString();
-
     if (ui->profileLineEdit->text().length() > 0)
     {
         QFileInfo profileFileName(ui->profileLineEdit->text());
 
         if (!profileFileName.exists())
         {
-            validForm = false;
-            errorString = tr("Profile file path is invalid.");
+            throw std::runtime_error(tr("Profile file path is invalid.").toStdString());
         }
     }
+}
 
-    if (validForm && (ui->applicationLineEdit->text().isEmpty() && ui->winClassLineEdit->text().isEmpty() &&
-                      ui->winNameLineEdit->text().isEmpty()))
-    {
-        validForm = false;
-        errorString = tr("No window matching property was specified.");
-    } else
-    {
-        propertyFound = true;
-    }
-
-    if (validForm && !ui->applicationLineEdit->text().isEmpty())
+/**
+ * @throw std::runtime_error
+ */
+void AddEditAutoProfileDialog::check_executable_file()
+{
+    if (!ui->applicationLineEdit->text().isEmpty())
     {
         QString exeFileName = ui->applicationLineEdit->text();
         QFileInfo info(exeFileName);
 
         if (info.isAbsolute() && (!info.exists() || !info.isExecutable()))
         {
-            validForm = false;
-            errorString = tr("Program path is invalid or not executable.");
+            throw std::runtime_error(tr("Program path is invalid or not executable.").toStdString());
         }
 #ifdef Q_OS_WIN
         else if (!info.isAbsolute() && (info.fileName() != exeFileName || info.suffix() != "exe"))
         {
-            validForm = false;
-            errorString = tr("File is not an .exe file.");
+            throw std::runtime_error(tr("File is not an .exe file.").toStdString());
         }
 #endif
     }
+}
 
-    if (validForm && !propertyFound && !ui->asDefaultCheckBox->isChecked())
+/**
+ * @brief Validate the form that is contained in this window
+ */
+void AddEditAutoProfileDialog::accept()
+{
+    QString errorString = QString();
+    try
     {
-        validForm = false;
-        errorString = tr("No window matching property was selected.");
-    }
+        check_profile_file();
 
-    if (validForm)
-    {
-        QDialog::accept();
-    } else
+        bool is_window_specified = !(ui->applicationLineEdit->text().isEmpty() && ui->winClassLineEdit->text().isEmpty() &&
+                                     ui->winNameLineEdit->text().isEmpty());
+        if (!is_window_specified && !ui->asDefaultCheckBox->isChecked())
+            throw std::runtime_error(tr("No window matching property was specified.").toStdString());
+        check_executable_file();
+
+    } catch (const std::runtime_error &e)
     {
         QMessageBox msgBox;
-        msgBox.setText(errorString);
+        msgBox.setText(e.what());
         msgBox.setStandardButtons(QMessageBox::Close);
         msgBox.exec();
     }
+
+    QDialog::accept();
 }
 
 QList<InputDevice *> *AddEditAutoProfileDialog::getDevices() const { return devices; }
@@ -475,14 +460,6 @@ bool AddEditAutoProfileDialog::getEditForm() const { return editForm; }
 bool AddEditAutoProfileDialog::getDefaultInfo() const { return defaultInfo; }
 
 QList<QString> const &AddEditAutoProfileDialog::getReservedUniques() { return reservedUniques; }
-
-void AddEditAutoProfileDialog::on_setPartialCheckBox_stateChanged(int arg1)
-{
-    if (arg1 == 0)
-        ui->winNameLineEdit->setEnabled(false);
-    else
-        ui->winNameLineEdit->setEnabled(true);
-}
 
 void AddEditAutoProfileDialog::checkDefaultCheckbox(const QString &text)
 {
@@ -500,14 +477,17 @@ void AddEditAutoProfileDialog::checkDefaultCheckbox(const QString &text)
 void AddEditAutoProfileDialog::openWinAppProfileDialog()
 {
     WinAppProfileTimerDialog *dialog = new WinAppProfileTimerDialog(this);
-    connect(dialog, SIGNAL(accepted()), this, SLOT(captureWindowsApplicationPath()));
+    connect(dialog, &WinAppProfileTimerDialog::accepted, this, &AddEditAutoProfileDialog::captureWindowsApplicationPath);
     dialog->show();
 }
 
+void AddEditAutoProfileDialog::callWindowPropAssignment() { windowPropAssignment(m_capture_window_info_dialog); }
+
 void AddEditAutoProfileDialog::captureWindowsApplicationPath()
 {
-    CapturedWindowInfoDialog *dialog = new CapturedWindowInfoDialog(this);
-    connect(dialog, SIGNAL(accepted()), this, SLOT(windowPropAssignment()));
-    dialog->show();
+    m_capture_window_info_dialog = new CapturedWindowInfoDialog(this);
+    connect(m_capture_window_info_dialog, &CapturedWindowInfoDialog::accepted, this,
+            &AddEditAutoProfileDialog::callWindowPropAssignment);
+    m_capture_window_info_dialog->show();
 }
 #endif

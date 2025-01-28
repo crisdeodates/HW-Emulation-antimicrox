@@ -23,6 +23,10 @@
 #include <QMetaObject>
 #include <QTime>
 
+// only for QT 6
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+    #include <QStringConverter>
+#endif
 #include <chrono>
 #include <thread>
 
@@ -42,6 +46,7 @@ Logger::Logger(QTextStream *stream, LogLevel output_lvl, QObject *parent)
     // needed to allow sending LogLevel using signals and slots
     qRegisterMetaType<Logger::LogLevel>("Logger::LogLevel");
     loggingThread = new QThread(this);
+    loggingThread->setObjectName("loggingThread");
     outputStream = stream;
     outputLevel = output_lvl;
 
@@ -150,8 +155,13 @@ void Logger::logMessage(const QString &message, const Logger::LogLevel level, co
 
         if (extendedLogs)
         {
+            static int filename_offset = -1;
+            if (filename_offset < 0)
+            {
+                filename_offset = filename.lastIndexOf("/src/");
+            }
             if (lineno != 0)
-                *outputStream << " (file " << filename.mid(7) << ":" << lineno << ")";
+                *outputStream << " (file " << filename.mid(filename_offset) << ":" << lineno << ")";
         }
 
         *outputStream << "\n";
@@ -177,7 +187,11 @@ void Logger::setCurrentLogFile(QString filename)
     }
     instance->outFileStream.setDevice(&instance->outputFile);
 #if defined(Q_OS_WIN)
-    instance->outFileStream.setCodec("UTF-16"); // to properly print special characters in files
+    #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+    instance->outFileStream.setEncoding(QStringConverter::Utf8);
+    #else
+    instance->outFileStream.setCodec("UTF-8"); // to properly print special characters in files
+    #endif
 #endif
     instance->setCurrentStream(&instance->outFileStream);
 }

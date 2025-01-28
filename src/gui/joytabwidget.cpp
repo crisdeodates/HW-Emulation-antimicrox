@@ -30,11 +30,14 @@
 #include "joyaxiswidget.h"
 #include "joybuttontypes/joycontrolstickbutton.h"
 #include "joybuttontypes/joydpadbutton.h"
+#include "joybuttontypes/joysensorbutton.h"
 #include "joybuttonwidget.h"
 #include "joycontrolstick.h"
 #include "joydpad.h"
+#include "joysensor.h"
 #include "joystick.h"
 #include "quicksetdialog.h"
+#include "sensorpushbuttongroup.h"
 #include "setnamesdialog.h"
 #include "stickpushbuttongroup.h"
 #include "vdpad.h"
@@ -60,7 +63,6 @@
 #include <QScrollArea>
 #include <QSpacerItem>
 #include <QStackedWidget>
-#include <QStringListIterator>
 #include <QVBoxLayout>
 #include <QWidget>
 
@@ -68,15 +70,11 @@ bool JoyTabWidget::changedNotSaved = false;
 
 JoyTabWidget::JoyTabWidget(InputDevice *joystick, AntiMicroSettings *settings, QWidget *parent)
     : QWidget(parent)
+    , m_joystick(joystick)
+    , m_settings(settings)
     , tabHelper(joystick)
 {
-    m_joystick = joystick;
-    m_settings = settings;
-
     tabHelper.moveToThread(joystick->thread());
-
-    comboBoxIndex = 0;
-    hideEmptyButtons = false;
 
     verticalLayout = new QVBoxLayout(this);
     verticalLayout->setContentsMargins(4, 4, 4, 4);
@@ -95,6 +93,16 @@ JoyTabWidget::JoyTabWidget(InputDevice *joystick, AntiMicroSettings *settings, Q
     configBox->setObjectName(QString::fromUtf8("configBox"));
     configBox->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
     configHorizontalLayout->addWidget(configBox);
+
+    batteryIcon = new QLabel("", this);
+    batteryIcon->setToolTip(tr("Battery level of controller"));
+    batteryIcon->setObjectName(QString::fromUtf8("battIcon"));
+    batteryIcon->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
+    configHorizontalLayout->addWidget(batteryIcon);
+    m_battery_updater = new QTimer(this);
+    connect(m_battery_updater, &QTimer::timeout, this, &JoyTabWidget::updateBatteryIcon);
+    m_battery_updater->start(5000);
+
     spacer1 = new QSpacerItem(30, 20, QSizePolicy::Fixed, QSizePolicy::Fixed);
     configHorizontalLayout->addItem(spacer1);
 
@@ -982,11 +990,10 @@ void JoyTabWidget::saveSettings()
 
     // Remove current settings for a controller
     QStringList tempkeys = m_settings->allKeys();
-    QStringListIterator iter(tempkeys);
 
-    while (iter.hasNext())
+    for (auto &&tempstring : tempkeys)
     {
-        QString tempstring = iter.next();
+        // QString tempstring = iter.next();
         if (!identifier.isEmpty() && tempstring.startsWith(controlEntryPrefix))
         {
             m_settings->remove(tempstring);
@@ -1125,16 +1132,16 @@ void JoyTabWidget::loadSettings(bool forceRefresh)
     QString controlEntryProfileName = QString("Controller%1ProfileName%2").arg(m_joystick->getStringIdentifier());
 
     bool finished = false;
-    for (int i = 1; !finished; i++)
+    for (int configFileNum = 1; !finished; configFileNum++)
     {
         QString tempfilepath = QString();
 
         if (!m_joystick->getStringIdentifier().isEmpty())
         {
             convToUniqueIDControllerGroupSett(
-                m_settings, QString("Controller%1ConfigFile%2").arg(m_joystick->getGUIDString()).arg(i),
-                QString("Controller%1ConfigFile%2").arg(m_joystick->getUniqueIDString()).arg(i));
-            tempfilepath = m_settings->value(controlEntryString.arg(i), "").toString();
+                m_settings, QString("Controller%1ConfigFile%2").arg(m_joystick->getGUIDString()).arg(configFileNum),
+                QString("Controller%1ConfigFile%2").arg(m_joystick->getUniqueIDString()).arg(configFileNum));
+            tempfilepath = m_settings->value(controlEntryString.arg(configFileNum), "").toString();
         }
 
         if (!tempfilepath.isEmpty())
@@ -1144,9 +1151,9 @@ void JoyTabWidget::loadSettings(bool forceRefresh)
             if (fileInfo.exists() && (configBox->findData(fileInfo.absoluteFilePath()) == -1))
             {
                 convToUniqueIDControllerGroupSett(
-                    m_settings, QString("Controller%1ProfileName%2").arg(m_joystick->getGUIDString()).arg(i),
-                    QString("Controller%1ProfileName%2").arg(m_joystick->getUniqueIDString()).arg(i));
-                QString profileName = m_settings->value(controlEntryProfileName.arg(i), "").toString();
+                    m_settings, QString("Controller%1ProfileName%2").arg(m_joystick->getGUIDString()).arg(configFileNum),
+                    QString("Controller%1ProfileName%2").arg(m_joystick->getUniqueIDString()).arg(configFileNum));
+                QString profileName = m_settings->value(controlEntryProfileName.arg(configFileNum), "").toString();
                 profileName = !profileName.isEmpty() ? profileName : PadderCommon::getProfileName(fileInfo);
                 configBox->addItem(profileName, fileInfo.absoluteFilePath());
             }
@@ -1155,7 +1162,7 @@ void JoyTabWidget::loadSettings(bool forceRefresh)
             finished = true;
         }
 
-        if ((numberRecentProfiles > 0) && (i == numberRecentProfiles))
+        if ((numberRecentProfiles > 0) && (configFileNum == numberRecentProfiles))
         {
             finished = true;
         }
@@ -1227,6 +1234,7 @@ QString JoyTabWidget::getCurrentConfigName() { return configBox->currentText(); 
 
 QString JoyTabWidget::getConfigName(int index) { return configBox->itemText(index); }
 
+// Switch widget to currently selected Set
 void JoyTabWidget::changeCurrentSet(int index)
 {
     int currentPage = stackedWidget_2->currentIndex();
@@ -1270,7 +1278,6 @@ void JoyTabWidget::changeCurrentSet(int index)
         oldSetButton->style()->polish(oldSetButton);
     }
 
-    m_joystick->setActiveSetNumber(index);
     stackedWidget_2->setCurrentIndex(index);
 
     switch (index)
@@ -1311,21 +1318,53 @@ void JoyTabWidget::changeCurrentSet(int index)
     }
 }
 
-void JoyTabWidget::changeSetOne() { changeCurrentSet(0); }
+void JoyTabWidget::changeSetOne()
+{
+    m_joystick->setActiveSetNumber(0);
+    changeCurrentSet(0);
+}
 
-void JoyTabWidget::changeSetTwo() { changeCurrentSet(1); }
+void JoyTabWidget::changeSetTwo()
+{
+    m_joystick->setActiveSetNumber(1);
+    changeCurrentSet(1);
+}
 
-void JoyTabWidget::changeSetThree() { changeCurrentSet(2); }
+void JoyTabWidget::changeSetThree()
+{
+    m_joystick->setActiveSetNumber(2);
+    changeCurrentSet(2);
+}
 
-void JoyTabWidget::changeSetFour() { changeCurrentSet(3); }
+void JoyTabWidget::changeSetFour()
+{
+    m_joystick->setActiveSetNumber(3);
+    changeCurrentSet(3);
+}
 
-void JoyTabWidget::changeSetFive() { changeCurrentSet(4); }
+void JoyTabWidget::changeSetFive()
+{
+    m_joystick->setActiveSetNumber(4);
+    changeCurrentSet(4);
+}
 
-void JoyTabWidget::changeSetSix() { changeCurrentSet(5); }
+void JoyTabWidget::changeSetSix()
+{
+    m_joystick->setActiveSetNumber(5);
+    changeCurrentSet(5);
+}
 
-void JoyTabWidget::changeSetSeven() { changeCurrentSet(6); }
+void JoyTabWidget::changeSetSeven()
+{
+    m_joystick->setActiveSetNumber(6);
+    changeCurrentSet(6);
+}
 
-void JoyTabWidget::changeSetEight() { changeCurrentSet(7); }
+void JoyTabWidget::changeSetEight()
+{
+    m_joystick->setActiveSetNumber(7);
+    changeCurrentSet(7);
+}
 
 void JoyTabWidget::showStickAssignmentDialog()
 {
@@ -1766,6 +1805,18 @@ void JoyTabWidget::checkStickDisplay()
     }
 }
 
+void JoyTabWidget::checkSensorDisplay()
+{
+    JoySensorButton *button = qobject_cast<JoySensorButton *>(sender());
+    JoySensor *sensor = button->getSensor();
+    if ((sensor != nullptr) && sensor->hasSlotsAssigned())
+    {
+        SetJoystick *currentSet = m_joystick->getActiveSetJoystick();
+        removeSetButtons(currentSet);
+        fillSetButtons(currentSet);
+    }
+}
+
 void JoyTabWidget::checkDPadButtonDisplay()
 {
     JoyDPadButton *button = qobject_cast<JoyDPadButton *>(sender()); // static_cast
@@ -1808,6 +1859,18 @@ void JoyTabWidget::checkStickEmptyDisplay()
     // JoyControlStickButton *button = static_cast<JoyControlStickButton*>(sender());
     // JoyControlStick *stick = button->getStick();
     if ((stick != nullptr) && !stick->hasSlotsAssigned())
+    {
+        SetJoystick *currentSet = m_joystick->getActiveSetJoystick();
+        removeSetButtons(currentSet);
+        fillSetButtons(currentSet);
+    }
+}
+
+void JoyTabWidget::checkSensorEmptyDisplay()
+{
+    SensorPushButtonGroup *group = qobject_cast<SensorPushButtonGroup *>(sender());
+    JoySensor *sensor = group->getSensor();
+    if ((sensor != nullptr) && !sensor->hasSlotsAssigned())
     {
         SetJoystick *currentSet = m_joystick->getActiveSetJoystick();
         removeSetButtons(currentSet);
@@ -1978,6 +2041,75 @@ void JoyTabWidget::fillSetButtons(SetJoystick *set)
     }
 
     column = 0;
+
+    QGridLayout *sensorGrid = nullptr;
+    QGroupBox *sensorGroup = nullptr;
+    int sensorGridColumn = 0;
+    int sensorGridRow = 0;
+
+    for (size_t i = 0; i < SENSOR_COUNT; ++i)
+    {
+        JoySensorType type = static_cast<JoySensorType>(i);
+        if (!m_joystick->hasSensor(type))
+            continue;
+
+        JoySensor *sensor = currentSet->getSensor(type);
+        sensor->establishPropertyUpdatedConnection();
+        QHash<JoySensorDirection, JoySensorButton *> *sensorButtons = sensor->getButtons();
+
+        if (!hideEmptyButtons || sensor->hasSlotsAssigned())
+        {
+            if (sensorGroup == nullptr)
+                sensorGroup = new QGroupBox(tr("Sensors"), this);
+
+            if (sensorGrid == nullptr)
+            {
+                sensorGrid = new QGridLayout();
+                sensorGridColumn = 0;
+                sensorGridRow = 0;
+            }
+
+            QWidget *groupContainer = new QWidget(sensorGroup);
+            SensorPushButtonGroup *sensorButtonGroup =
+                new SensorPushButtonGroup(sensor, isKeypadUnlocked(), displayingNames, groupContainer);
+            if (hideEmptyButtons)
+            {
+                connect(sensorButtonGroup, &SensorPushButtonGroup::buttonSlotChanged, this,
+                        &JoyTabWidget::checkSensorEmptyDisplay);
+            }
+
+            connect(namesPushButton, &QPushButton::clicked, sensorButtonGroup, &SensorPushButtonGroup::toggleNameDisplay);
+
+            if (sensorGridColumn > 1)
+            {
+                sensorGridColumn = 0;
+                sensorGridRow++;
+            }
+
+            groupContainer->setLayout(sensorButtonGroup);
+            sensorGrid->addWidget(groupContainer, sensorGridRow, sensorGridColumn);
+            sensorGridColumn++;
+        } else
+        {
+            for (auto iter = sensorButtons->cbegin(); iter != sensorButtons->cend(); ++iter)
+            {
+                JoySensorButton *button = iter.value();
+                button->establishPropertyUpdatedConnections();
+                connect(button, &JoySensorButton::slotsChanged, this, &JoyTabWidget::checkSensorDisplay);
+            }
+        }
+    }
+
+    if (sensorGroup != nullptr)
+    {
+        QSpacerItem *tempspacer = new QSpacerItem(10, 4, QSizePolicy::Minimum, QSizePolicy::Fixed);
+        QVBoxLayout *tempvbox = new QVBoxLayout;
+        tempvbox->addLayout(sensorGrid);
+        tempvbox->addItem(tempspacer);
+        sensorGroup->setLayout(tempvbox);
+        current_layout->addWidget(sensorGroup, row, column, 1, 2, Qt::AlignTop);
+        row++;
+    }
 
     QGridLayout *hatGrid = nullptr;
     QGroupBox *hatGroup = nullptr;
@@ -2472,4 +2604,51 @@ void JoyTabWidget::convToUniqueIDControllerGroupSett(QSettings *sett, QString gu
         sett->setValue(uniqueControllerSett, sett->value(guidControllerSett));
         sett->remove(guidControllerSett);
     }
+}
+
+void JoyTabWidget::updateBatteryIcon()
+{
+    SDL_JoystickPowerLevel power_level = SDL_JoystickCurrentPowerLevel(m_joystick->getJoyHandle());
+    if (m_old_power_level == power_level)
+    {
+        return;
+    }
+    switch (power_level)
+    {
+    case SDL_JOYSTICK_POWER_EMPTY:
+        batteryIcon->setVisible(true);
+        batteryIcon->setPixmap(PadderCommon::loadIcon("battery-empty").pixmap(QSize(20, 20)));
+        break;
+
+    case SDL_JOYSTICK_POWER_LOW:
+        batteryIcon->setVisible(true);
+        batteryIcon->setPixmap(PadderCommon::loadIcon("battery-low").pixmap(QSize(20, 20)));
+        break;
+
+    case SDL_JOYSTICK_POWER_MEDIUM:
+        batteryIcon->setVisible(true);
+        batteryIcon->setPixmap(PadderCommon::loadIcon("battery-good").pixmap(QSize(20, 20)));
+        break;
+
+    case SDL_JOYSTICK_POWER_FULL:
+    case SDL_JOYSTICK_POWER_MAX:
+        batteryIcon->setVisible(true);
+        batteryIcon->setPixmap(PadderCommon::loadIcon("battery-full").pixmap(QSize(20, 20)));
+        break;
+
+    case SDL_JOYSTICK_POWER_UNKNOWN:
+        batteryIcon->setVisible(false);
+        break;
+
+    case SDL_JOYSTICK_POWER_WIRED:
+        batteryIcon->setVisible(true);
+        batteryIcon->setPixmap(PadderCommon::loadIcon("battery-good-charging").pixmap(QSize(20, 20)));
+        break;
+
+    default:
+        batteryIcon->setVisible(false);
+        WARN() << "Unknown battery level:" << power_level << " for joystick: " << m_joystick->getName();
+        break;
+    }
+    m_old_power_level = power_level;
 }

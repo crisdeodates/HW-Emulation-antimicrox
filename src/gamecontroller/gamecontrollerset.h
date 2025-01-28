@@ -26,6 +26,9 @@
 class QXmlStreamReader;
 class InputDevice;
 
+/**
+ * @brief A SetJoystick specialized for gamepads
+ */
 class GameControllerSet : public SetJoystick
 {
     Q_OBJECT
@@ -35,21 +38,17 @@ class GameControllerSet : public SetJoystick
 
     virtual void refreshAxes();
 
-    virtual void readConfig(QXmlStreamReader *xml); // GameControllerSetXml
-    virtual void readJoystickConfig(QXmlStreamReader *xml, QHash<int, SDL_GameControllerButton> &buttons,
-                                    QHash<int, SDL_GameControllerAxis> &axes,
-                                    QList<SDL_GameControllerButtonBind> &hatButtons); // GameControllerSetXml class
+    virtual void readConfig(QXmlStreamReader *xml);
 
   protected:
     void populateSticksDPad();
 
   public slots:
     virtual void reset();
+    void applyHapticTrigger();
 
   private:
-    void getElemFromXml(QString elemName, QXmlStreamReader *xml); // GameControllerSetXml class
-    void readConfDpad(QXmlStreamReader *xml, QList<SDL_GameControllerButtonBind> &hatButtons, bool vdpadExists,
-                      bool dpadExists); // GameControllerSetXml class
+    void getElemFromXml(QString elemName, QXmlStreamReader *xml);
     void resetSticks();
 };
 

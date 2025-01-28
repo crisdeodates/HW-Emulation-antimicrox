@@ -6,25 +6,47 @@ on:
 jobs:
     # Build .deb files for debian-based systems.
     build_deb:
-        name: Build Debian package
-        runs-on: ubuntu-latest
+        strategy:
+          fail-fast: false
+          matrix: 
+            include:
+              - name: Ubuntu 24-04
+                image: ubuntu-24.04
+              - name: Ubuntu 22-04
+                image: ubuntu-22.04
+              - name: Ubuntu 20-04
+                image: ubuntu-20.04
+        name: Build deb package ${{ matrix.name }}
+        runs-on: ${{ matrix.image }}
 
         steps:
-            - uses: actions/checkout@v2
+            - uses: actions/checkout@v4
 
-            - name: Install Dependencies
+            - name: Install Dependencies with QT5
+              if: matrix.image != 'ubuntu-24.04'
               run: sudo apt-get update && sudo apt-get install extra-cmake-modules qttools5-dev qttools5-dev-tools libsdl2-dev libxi-dev libxtst-dev libx11-dev itstool gettext
 
+            - name: Install Dependencies with QT6
+              if: matrix.image == 'ubuntu-24.04'
+              run: sudo apt-get update && sudo apt-get install extra-cmake-modules qt6-base-dev qt6-tools-dev-tools libqt6core5compat6-dev qt6-tools-dev libsdl2-dev libxi-dev libxtst-dev libx11-dev itstool gettext
+
             - name: Configure CMake
-              run: cmake -DCPACK_GENERATOR="DEB" -DCMAKE_BUILD_TYPE=Release -DCHECK_FOR_UPDATES=ON -DANTIMICROX_PKG_VERSION="GitHub Release" -B ${{ github.workspace }}/build
+              run: cmake -DCPACK_GENERATOR="DEB" -DCMAKE_BUILD_TYPE=Release -DCHECK_FOR_UPDATES=ON -DANTIMICROX_PKG_VERSION="GitHub deb Release" -B ${{ github.workspace }}/build
 
             - name: Create Deb package
               id: create_deb
               run: cmake --build ${{ github.workspace }}/build --parallel 8 --target package
 
+            - name: Rename deb files
+              id: rename_debs
+              run: |
+                FILE=`find ${{ github.workspace }}/build/*.deb`
+                NEWFILE=`echo $FILE | sed 's/x86_64/${{ matrix.image }}-x86_64/'`
+                mv $FILE $NEWFILE
+
             # Upload generated files to release
             - name: Upload binaries to release
-              uses: AButler/upload-release-assets@v2.0
+              uses: AButler/upload-release-assets@v3.0
               with:
                   files: ${{ github.workspace }}/build/*.deb
                   repo-token: ${{ github.token }}
@@ -33,14 +55,28 @@ jobs:
     build-appimage:
         # Version of ubuntu building this appimage, it shouldn't be the latest verion of ubuntu to avoid breaking compatibility with older systems
         name: Build AppImage package
-        runs-on: ubuntu-18.04
+        runs-on: ubuntu-20.04
 
         steps:
-            - uses: actions/checkout@v2
 
             - name: Install Dependencies
               run: |
-                  sudo apt-get update && sudo apt-get install extra-cmake-modules qttools5-dev qttools5-dev-tools libsdl2-dev libxi-dev libxtst-dev libx11-dev itstool gettext qt5-default libsdl2-2.0-0 zsync
+                  sudo apt-get update
+                  sudo apt-get install extra-cmake-modules qttools5-dev qttools5-dev-tools libsdl2-dev libxi-dev libxtst-dev libx11-dev itstool gettext qt5-default zsync
+
+            #Replace original library with the newer one
+            - name: Build and install newer SDL2
+              run: |
+                git clone https://github.com/libsdl-org/SDL.git -b release-2.30.6
+                cd SDL
+                mkdir build
+                cd build
+                cmake ..
+                cmake --build .
+                sudo cmake --install .
+                sudo cp /usr/local/lib/libSDL2-2.0.so.0 /usr/lib/x86_64-linux-gnu/libSDL2-2.0.so.0
+
+            - uses: actions/checkout@v4
 
             - name: Prepare files needed to create AppImage
               run: |
@@ -59,7 +95,7 @@ jobs:
                   MINOR=`echo $VERSION | cut -d " " -f 2`
                   PATCH=`echo $VERSION | cut -d " " -f 3`
                   cd build
-                  cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr -DANTIMICROX_PKG_VERSION="$MAJOR.$MINOR.$PATCH-x86_64 \(AppImage\)"
+                  cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr -DANTIMICROX_PKG_VERSION="$MAJOR.$MINOR.$PATCH-x86_64 GitHub AppImage Release"
                   make install DESTDIR=AppDir -j8
 
             # UPDATE_INFORMATION describes where information about updates can be found
@@ -72,7 +108,7 @@ jobs:
 
             # Upload generated files to release
             - name: Upload binaries to release
-              uses: AButler/upload-release-assets@v2.0
+              uses: AButler/upload-release-assets@v3.0
               with:
                   files: ./build/AntiMicroX*.AppImage;./build/AntiMicroX*.zsync
                   repo-token: ${{ github.token }}
@@ -96,20 +132,20 @@ jobs:
 
             # Upload generated files to release
             - name: Upload binaries to release
-              uses: AButler/upload-release-assets@v2.0
+              uses: AButler/upload-release-assets@v3.0
               with:
                   files: ./build/AntiMicroX*.AppImage
                   repo-token: ${{ github.token }}
 
-    build-windows-installer:
-        name: Create Windows Installer
-        runs-on: windows-latest
+    build-windows-packages:
+        name: Create Windows packages
+        runs-on: windows-2019
         defaults:
             run:
                 shell: msys2 {0}
 
         steps:
-            - uses: actions/checkout@v2
+            - uses: actions/checkout@v4
 
             - name: Install Dependencies
               uses: msys2/setup-msys2@v2
@@ -117,32 +153,45 @@ jobs:
                   install: >-
                       mingw-w64-x86_64-toolchain
                       mingw-w64-x86_64-ninja
-                      mingw-w64-x86_64-SDL2
                       mingw-w64-x86_64-nsis
                       mingw-w64-x86_64-openssl
                   msystem: mingw64
                   release: false
+            # mingw-w64-x86_64-SDL2 not installed above because of: https://github.com/AntiMicroX/antimicrox/issues/465
+            # SDL2 version for release locked
+            - name: Install sdl2
+              run: |
+                curl -L -o mingw-w64-x86_64-SDL2-2.30.6-1-any.pkg.tar.zst https://mirror.msys2.org/mingw/mingw64/mingw-w64-x86_64-SDL2-2.30.6-1-any.pkg.tar.zst
+                pacman --noconfirm -U mingw-w64-x86_64-SDL2-2.30.6-1-any.pkg.tar.zst
 
             - name: Install Qt
-              uses: jurplel/install-qt-action@v2
+              uses: jurplel/install-qt-action@v4
               with:
-                  version: "5.15.2"
+                  version: "6.7"
                   host: "windows"
                   target: "desktop"
-                  arch: "win64_mingw81"
+                  arch: "win64_mingw"
                   dir: "${{ github.workspace }}/qt/"
                   install-deps: "true"
 
             - name: Configure CMake
               run: cmake -DCMAKE_BUILD_TYPE=Release -DCHECK_FOR_UPDATES=ON -DANTIMICROX_PKG_VERSION="GitHub Windows Release" -B '${{ github.workspace }}'/build
               env:
-                  CMAKE_PREFIX_PATH: ${{env.Qt5_Dir}}
+                  CMAKE_PREFIX_PATH: "${{ env.QT_ROOT_DIR }}/lib/cmake"
 
             - name: Build Installer
               run: cmake --build '${{ github.workspace }}'/build --target package --parallel 8
 
+            - name: Configure CMake (portable)
+              run: cmake -DCMAKE_BUILD_TYPE=Release -DCHECK_FOR_UPDATES=ON -DANTIMICROX_PKG_VERSION="GitHub Portable Windows Release" -DPORTABLE_WIN=ON -B '${{ github.workspace }}'/build
+              env:
+                  CMAKE_PREFIX_PATH: "${{ env.QT_ROOT_DIR }}/lib/cmake"
+
+            - name: Build ZIP Package
+              run: cmake --build '${{ github.workspace }}'/build --target package --parallel 8
+
             - name: Upload binaries to release
-              uses: AButler/upload-release-assets@v2.0
+              uses: AButler/upload-release-assets@v3.0
               with:
-                  files: build/antimicrox*.exe
+                  files: build/antimicrox*.exe;build/antimicrox*.zip
                   repo-token: ${{ github.token }}

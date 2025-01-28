@@ -1,5 +1,5 @@
 /* antimicrox Gamepad to KB+M event mapper
- * Copyright (C) 2020 Jagoda Górska <juliagoda.pl@protonmail>
+ * Copyright (C) 2022 Max Maisel <max.maisel@posteo.de>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -14,27 +14,19 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+#pragma once
 
-#ifndef GAMECONTROLLERDPADXML_H
-#define GAMECONTROLLERDPADXML_H
+#include "joybuttontypes/joysensorbutton.h"
 
-#include "vdpad.h"
-#include "xml/joydpadxml.h"
-
-class GameControllerDPad;
-class QXmlStreamReader;
-
-class GameControllerDPadXml : public JoyDPadXml<VDPad>
+/**
+ * @brief Represents a gyroscope mapping in a SetJoystick
+ */
+class JoyGyroscopeButton : public JoySensorButton
 {
     Q_OBJECT
 
   public:
-    explicit GameControllerDPadXml(GameControllerDPad *gameContrDpad, QObject *parent = nullptr);
+    explicit JoyGyroscopeButton(JoySensor *sensor, int index, int originset, SetJoystick *parentSet, QObject *parent);
 
-    void readJoystickConfig(QXmlStreamReader *xml);
-
-  private:
-    JoyDPadXml<GameControllerDPad> *dpadXml;
+    virtual QString getDirectionName() const override;
 };
-
-#endif // GAMECONTROLLERDPADXML_H

@@ -19,7 +19,10 @@
 #ifndef JOYTABWIDGET_H
 #define JOYTABWIDGET_H
 
+#include <QLabel>
 #include <QWidget>
+
+#include <SDL_joystick.h>
 
 #include "uihelpers/joytabwidgethelper.h"
 
@@ -116,6 +119,7 @@ class JoyTabWidget : public QWidget
     void showKeyDelayDialog();
     void showSetNamesDialog(); // JoyTabWidgetSets class
     void toggleNames();
+    void updateBatteryIcon();
 
     void changeSetOne();   // JoyTabWidgetSets class
     void changeSetTwo();   // JoyTabWidgetSets class
@@ -130,11 +134,13 @@ class JoyTabWidget : public QWidget
     void checkForUnsavedProfile(int newindex = -1);
 
     void checkStickDisplay();
+    void checkSensorDisplay();
     void checkDPadButtonDisplay();
     void checkAxisButtonDisplay();
     void checkButtonDisplay();
 
     void checkStickEmptyDisplay();
+    void checkSensorEmptyDisplay();
     void checkDPadButtonEmptyDisplay();
     void checkAxisButtonEmptyDisplay();
     void checkButtonEmptyDisplay();
@@ -149,6 +155,7 @@ class JoyTabWidget : public QWidget
   private:
     QVBoxLayout *verticalLayout;
     QHBoxLayout *configHorizontalLayout;
+    QLabel *batteryIcon;
     QPushButton *removeButton;
     QPushButton *loadButton;
     QPushButton *saveButton;
@@ -213,11 +220,14 @@ class JoyTabWidget : public QWidget
     bool displayingNames;
     static bool changedNotSaved;
     AntiMicroSettings *m_settings;
-    int comboBoxIndex;
-    bool hideEmptyButtons;
+    int comboBoxIndex = 0;
+    bool hideEmptyButtons = false;
     QString oldProfileName;
 
     JoyTabWidgetHelper tabHelper;
+
+    SDL_JoystickPowerLevel m_old_power_level = SDL_JOYSTICK_POWER_UNKNOWN;
+    QTimer *m_battery_updater;
 };
 
 #endif // JOYTABWIDGET_H

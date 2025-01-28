@@ -25,8 +25,8 @@
 
 #include <QDebug>
 
-JoyGradientButton::JoyGradientButton(int index, int originset, SetJoystick *parentSet, QObject *parent)
-    : JoyButton(index, originset, parentSet, parent)
+JoyGradientButton::JoyGradientButton(int sdl_button_index, int originset, SetJoystick *parentSet, QObject *parent)
+    : JoyButton(sdl_button_index, originset, parentSet, parent)
 {
 }
 
@@ -453,7 +453,7 @@ void JoyGradientButton::wheelEventHorizontal()
 
             tempInterval = qMin(tempInterval, 5);
 
-            if (!mouseWheelHorizontalEventTimer.isActive() || (mouseWheelVerticalEventTimer.interval() != tempInterval))
+            if (!mouseWheelHorizontalEventTimer.isActive() || (mouseWheelHorizontalEventTimer.interval() != tempInterval))
             {
                 mouseWheelHorizontalEventTimer.start(tempInterval);
             }
@@ -469,10 +469,13 @@ void JoyGradientButton::wheelEventHorizontal()
             buttonslot = mouseWheelHorizontalEventQueue.dequeue();
             bool isActive = getActiveSlots().contains(buttonslot);
 
-            if (isActive)
+            if (isActive && activateEvent)
             {
                 sendevent(buttonslot, true);
                 sendevent(buttonslot, false);
+                tempQueue.enqueue(buttonslot);
+            } else if (isActive)
+            {
                 tempQueue.enqueue(buttonslot);
             }
         }
@@ -492,7 +495,7 @@ void JoyGradientButton::wheelEventHorizontal()
 
             tempInterval = qMin(tempInterval, 5);
 
-            if (!mouseWheelHorizontalEventTimer.isActive() || (mouseWheelVerticalEventTimer.interval() != tempInterval))
+            if (!mouseWheelHorizontalEventTimer.isActive() || (mouseWheelHorizontalEventTimer.interval() != tempInterval))
             {
                 mouseWheelHorizontalEventTimer.start(tempInterval);
             }

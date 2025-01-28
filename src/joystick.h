@@ -25,6 +25,12 @@
 
 class AntiMicroSettings;
 
+/**
+ * @brief General input device (which is not a typical gamepad like steering wheels, flight sticks etc.)
+ *
+ * @details This is broad category of devices. (Includes Gamepads described by GameController and all of the other devices)
+ * Devices in this category trigger events SDL_JOY... (like SDL_JOYBUTTONUP)
+ */
 class Joystick : public InputDevice
 {
     Q_OBJECT
@@ -34,11 +40,12 @@ class Joystick : public InputDevice
 
     virtual QString getName() override;
     virtual QString getSDLName() override;
-    virtual QString getGUIDString() override; // GUID available on SDL 2.
-    virtual QString getUniqueIDString() override;
-    virtual QString getVendorString() override;
-    virtual QString getProductIDString() override;
-    virtual QString getProductVersion() override;
+    virtual QString getGUIDString() const override; // GUID available on SDL 2.
+    virtual QString getUniqueIDString() const override;
+    virtual QString getVendorString() const override;
+    virtual QString getProductIDString() const override;
+    virtual QString getSerialString() const override;
+    virtual QString getProductVersion() const override;
 
     virtual void closeSDLDevice() override;
     virtual SDL_JoystickID getSDLJoystickID() override;
@@ -46,10 +53,13 @@ class Joystick : public InputDevice
     virtual int getNumberRawButtons() override;
     virtual int getNumberRawAxes() override;
     virtual int getNumberRawHats() override;
+    virtual double getRawSensorRate(JoySensorType type) override;
+    virtual bool hasRawSensor(JoySensorType type) override;
+
     void setCounterUniques(int counter) override;
 
     SDL_Joystick *getJoyhandle() const;
-    virtual QString getXmlName() override;
+    virtual QString getXmlName() const override;
 
   private:
     SDL_Joystick *m_joyhandle;

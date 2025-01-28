@@ -18,11 +18,14 @@
 #include "inputdevicexml.h"
 #include "inputdevice.h"
 #include "joybuttontypes/joycontrolstickbutton.h"
+#include "joybuttontypes/joysensorbutton.h"
 #include "joycontrolstick.h"
+#include "joysensor.h"
 #include "vdpad.h"
 
 #include "common.h"
 #include "globalvariables.h"
+#include "logger.h"
 
 #include <QDebug>
 #include <QXmlStreamReader>
@@ -32,24 +35,45 @@ InputDeviceXml::InputDeviceXml(InputDevice *inputDevice, QObject *parent)
     : QObject(parent)
     , m_inputDevice(inputDevice)
 {
+    QThread *thread = m_inputDevice->thread();
+    this->moveToThread(thread);
+    connect(this, &InputDeviceXml::readConfigSig, this, &InputDeviceXml::readConfig);
 }
 
+/**
+ * @brief Deserializes the given XML stream into an InputDevice object
+ * @param[in] xml The XML stream to read from
+ */
 void InputDeviceXml::readConfig(QXmlStreamReader *xml)
 {
-    if (xml->isStartElement() && (xml->name() == m_inputDevice->getXmlName()))
+    m_mutex_read_config.try_lock();
+    // reading of config should be handled in inputEventThread
+    if (this->thread() != QThread::currentThread())
+    {
+        emit readConfigSig(xml);
+        DEBUG() << "Redirecting readConfig call to antoher Thread, waiting on mutex here.";
+        bool opened = m_mutex_read_config.tryLock(1000);
+        if (opened)
+            DEBUG() << "readConfig mutex opened";
+        else
+            WARN() << "Could not open mutex_read_config";
+        m_mutex_read_config.unlock();
+        return;
+    }
+    if (xml->isStartElement() && (xml->name().toString() == m_inputDevice->getXmlName()))
     {
         m_inputDevice->transferReset();
         xml->readNextStartElement();
 
-        while (!xml->atEnd() && (!xml->isEndElement() && (xml->name() != m_inputDevice->getXmlName())))
+        while (!xml->atEnd() && (!xml->isEndElement() && (xml->name().toString() != m_inputDevice->getXmlName())))
         {
-            if ((xml->name() == "sets") && xml->isStartElement())
+            if ((xml->name().toString() == "sets") && xml->isStartElement())
             {
                 xml->readNextStartElement();
 
-                while (!xml->atEnd() && (!xml->isEndElement() && (xml->name() != "sets")))
+                while (!xml->atEnd() && (!xml->isEndElement() && (xml->name().toString() != "sets")))
                 {
-                    if ((xml->name() == "set") && xml->isStartElement())
+                    if ((xml->name().toString() == "set") && xml->isStartElement())
                     {
                         int index = xml->attributes().value("index").toString().toInt();
                         index = index - 1;
@@ -64,7 +88,7 @@ void InputDeviceXml::readConfig(QXmlStreamReader *xml)
 
                     xml->readNextStartElement();
                 }
-            } else if ((xml->name() == "stickAxisAssociation") && xml->isStartElement())
+            } else if ((xml->name().toString() == "stickAxisAssociation") && xml->isStartElement())
             {
                 int stickIndex = xml->attributes().value("index").toString().toInt();
                 int xAxis = xml->attributes().value("xAxis").toString().toInt();
@@ -96,7 +120,7 @@ void InputDeviceXml::readConfig(QXmlStreamReader *xml)
                 {
                     xml->skipCurrentElement();
                 }
-            } else if ((xml->name() == "vdpadButtonAssociations") && xml->isStartElement())
+            } else if ((xml->name().toString() == "vdpadButtonAssociations") && xml->isStartElement())
             {
                 int vdpadIndex = xml->attributes().value("index").toString().toInt();
 
@@ -118,9 +142,9 @@ void InputDeviceXml::readConfig(QXmlStreamReader *xml)
 
                     xml->readNextStartElement();
 
-                    while (!xml->atEnd() && (!xml->isEndElement() && (xml->name() != "vdpadButtonAssociations")))
+                    while (!xml->atEnd() && (!xml->isEndElement() && (xml->name().toString() != "vdpadButtonAssociations")))
                     {
-                        if ((xml->name() == "vdpadButtonAssociation") && xml->isStartElement())
+                        if ((xml->name().toString() == "vdpadButtonAssociation") && xml->isStartElement())
                         {
                             int vdpadAxisIndex = xml->attributes().value("axis").toString().toInt();
                             int vdpadButtonIndex = xml->attributes().value("button").toString().toInt();
@@ -198,13 +222,13 @@ void InputDeviceXml::readConfig(QXmlStreamReader *xml)
                             (*currJoy)->removeVDPad(currVDPad - VDPadLists.begin());
                     }
                 }
-            } else if ((xml->name() == "names") && xml->isStartElement())
+            } else if ((xml->name().toString() == "names") && xml->isStartElement())
             {
                 xml->readNextStartElement();
 
-                while (!xml->atEnd() && (!xml->isEndElement() && (xml->name() != "names")))
+                while (!xml->atEnd() && (!xml->isEndElement() && (xml->name().toString() != "names")))
                 {
-                    if ((xml->name() == "buttonname") && xml->isStartElement())
+                    if ((xml->name().toString() == "buttonname") && xml->isStartElement())
                     {
                         int index = xml->attributes().value("index").toString().toInt();
                         QString temp = xml->readElementText();
@@ -214,7 +238,7 @@ void InputDeviceXml::readConfig(QXmlStreamReader *xml)
                         {
                             m_inputDevice->setButtonName(index, temp);
                         }
-                    } else if ((xml->name() == "axisbuttonname") && xml->isStartElement())
+                    } else if ((xml->name().toString() == "axisbuttonname") && xml->isStartElement())
                     {
                         int index = xml->attributes().value("index").toString().toInt();
                         int buttonIndex = xml->attributes().value("button").toString().toInt();
@@ -226,7 +250,7 @@ void InputDeviceXml::readConfig(QXmlStreamReader *xml)
                         {
                             m_inputDevice->setAxisButtonName(index, buttonIndex, temp);
                         }
-                    } else if ((xml->name() == "controlstickbuttonname") && xml->isStartElement())
+                    } else if ((xml->name().toString() == "controlstickbuttonname") && xml->isStartElement())
                     {
                         int index = xml->attributes().value("index").toString().toInt();
                         int buttonIndex = xml->attributes().value("button").toString().toInt();
@@ -237,7 +261,15 @@ void InputDeviceXml::readConfig(QXmlStreamReader *xml)
                         {
                             m_inputDevice->setStickButtonName(index, buttonIndex, temp);
                         }
-                    } else if ((xml->name() == "dpadbuttonname") && xml->isStartElement())
+                    } else if ((xml->name().toString() == "sensorbuttonname") && xml->isStartElement())
+                    {
+                        int type = xml->attributes().value("type").toString().toInt();
+                        int direction = xml->attributes().value("button").toString().toInt();
+                        QString temp = xml->readElementText();
+                        if (!temp.isEmpty())
+                            m_inputDevice->setSensorButtonName(static_cast<JoySensorType>(type),
+                                                               static_cast<JoySensorDirection>(direction), temp);
+                    } else if ((xml->name().toString() == "dpadbuttonname") && xml->isStartElement())
                     {
                         int index = xml->attributes().value("index").toString().toInt();
                         int buttonIndex = xml->attributes().value("button").toString().toInt();
@@ -248,7 +280,7 @@ void InputDeviceXml::readConfig(QXmlStreamReader *xml)
                         {
                             m_inputDevice->setDPadButtonName(index, buttonIndex, temp);
                         }
-                    } else if ((xml->name() == "vdpadbuttonname") && xml->isStartElement())
+                    } else if ((xml->name().toString() == "vdpadbuttonname") && xml->isStartElement())
                     {
                         int index = xml->attributes().value("index").toString().toInt();
                         int buttonIndex = xml->attributes().value("button").toString().toInt();
@@ -259,7 +291,7 @@ void InputDeviceXml::readConfig(QXmlStreamReader *xml)
                         {
                             m_inputDevice->setVDPadButtonName(index, buttonIndex, temp);
                         }
-                    } else if ((xml->name() == "axisname") && xml->isStartElement())
+                    } else if ((xml->name().toString() == "axisname") && xml->isStartElement())
                     {
                         int index = xml->attributes().value("index").toString().toInt();
                         QString temp = xml->readElementText();
@@ -269,7 +301,7 @@ void InputDeviceXml::readConfig(QXmlStreamReader *xml)
                         {
                             m_inputDevice->setAxisName(index, temp);
                         }
-                    } else if ((xml->name() == "controlstickname") && xml->isStartElement())
+                    } else if ((xml->name().toString() == "controlstickname") && xml->isStartElement())
                     {
                         int index = xml->attributes().value("index").toString().toInt();
                         QString temp = xml->readElementText();
@@ -279,7 +311,13 @@ void InputDeviceXml::readConfig(QXmlStreamReader *xml)
                         {
                             m_inputDevice->setStickName(index, temp);
                         }
-                    } else if ((xml->name() == "dpadname") && xml->isStartElement())
+                    } else if ((xml->name().toString() == "sensorname") && xml->isStartElement())
+                    {
+                        int type = xml->attributes().value("type").toString().toInt();
+                        QString temp = xml->readElementText();
+                        if (!temp.isEmpty())
+                            m_inputDevice->setSensorName(static_cast<JoySensorType>(type), temp);
+                    } else if ((xml->name().toString() == "dpadname") && xml->isStartElement())
                     {
                         int index = xml->attributes().value("index").toString().toInt();
                         QString temp = xml->readElementText();
@@ -289,7 +327,7 @@ void InputDeviceXml::readConfig(QXmlStreamReader *xml)
                         {
                             m_inputDevice->setDPadName(index, temp);
                         }
-                    } else if ((xml->name() == "vdpadname") && xml->isStartElement())
+                    } else if ((xml->name().toString() == "vdpadname") && xml->isStartElement())
                     {
                         int index = xml->attributes().value("index").toString().toInt();
                         QString temp = xml->readElementText();
@@ -307,7 +345,11 @@ void InputDeviceXml::readConfig(QXmlStreamReader *xml)
 
                     xml->readNextStartElement();
                 }
-            } else if ((xml->name() == "keyPressTime") && xml->isStartElement())
+            } else if ((xml->name().toString() == "calibration") && xml->isStartElement())
+            {
+                m_inputDevice->getCalibrationBackend()->readConfig(xml);
+                m_inputDevice->getCalibrationBackend()->applyCalibrations();
+            } else if ((xml->name().toString() == "keyPressTime") && xml->isStartElement())
             {
                 int tempchoice = xml->readElementText().toInt();
 
@@ -315,7 +357,7 @@ void InputDeviceXml::readConfig(QXmlStreamReader *xml)
                 {
                     m_inputDevice->setDeviceKeyPressTime(tempchoice);
                 }
-            } else if ((xml->name() == "profilename") && xml->isStartElement())
+            } else if ((xml->name().toString() == "profilename") && xml->isStartElement())
             {
                 m_inputDevice->setProfileName(xml->readElementText());
             } else
@@ -329,8 +371,13 @@ void InputDeviceXml::readConfig(QXmlStreamReader *xml)
 
         m_inputDevice->reInitButtons();
     }
+    m_mutex_read_config.unlock();
 }
 
+/**
+ * @brief Serializes an InputDevice object into the the given XML stream
+ * @param[in,out] xml The XML stream to write to
+ */
 void InputDeviceXml::writeConfig(QXmlStreamWriter *xml)
 {
     xml->writeStartElement(m_inputDevice->getXmlName());
@@ -552,6 +599,38 @@ void InputDeviceXml::writeConfig(QXmlStreamWriter *xml)
             }
         }
 
+        // write sensors
+        auto sensors = m_inputDevice->getActiveSetJoystick()->getSensors();
+        for (const auto &sensor : sensors)
+        {
+            if (sensor != nullptr)
+            {
+                if (!sensor->getSensorName().isEmpty())
+                {
+                    xml->writeStartElement("sensorname");
+                    xml->writeAttribute("type", QString::number(sensor->getType()));
+                    xml->writeCharacters(sensor->getSensorName());
+                    xml->writeEndElement();
+                }
+
+                // write button of each sensor
+                auto buttons = sensor->getButtons();
+                for (auto iter = buttons->cbegin(); iter != buttons->cend(); ++iter)
+                {
+                    JoySensorButton *button = iter.value();
+
+                    if (button && !button->getButtonName().isEmpty())
+                    {
+                        xml->writeStartElement("sensorbuttonname");
+                        xml->writeAttribute("type", QString::number(sensor->getType()));
+                        xml->writeAttribute("button", QString::number(button->getRealJoyNumber()));
+                        xml->writeCharacters(button->getButtonName());
+                        xml->writeEndElement();
+                    }
+                }
+            }
+        }
+
         // write Hats
         QListIterator<JoyDPad *> currJoyDPad(m_inputDevice->getActiveSetJoystick()->getHats().values());
 
@@ -633,18 +712,16 @@ void InputDeviceXml::writeConfig(QXmlStreamWriter *xml)
         (m_inputDevice->getDeviceKeyPressTime() != GlobalVariables::InputDevice::DEFAULTKEYPRESSTIME))
         xml->writeTextElement("keyPressTime", QString::number(m_inputDevice->getDeviceKeyPressTime()));
 
+    m_inputDevice->getCalibrationBackend()->writeConfig(xml);
+
     xml->writeStartElement("sets");
 
-    QHash<int, SetJoystick *>::const_iterator i = m_inputDevice->getJoystick_sets().constBegin();
-
-    while (i != m_inputDevice->getJoystick_sets().constEnd())
+    for (const auto &joyset : m_inputDevice->getJoystick_sets())
     {
-        if (!i.value()->isSetEmpty())
-            i.value()->writeConfig(xml);
+        if (!joyset->isSetEmpty())
+            joyset->writeConfig(xml);
         else
             qDebug() << "Set is empty";
-
-        ++i;
     }
 
     xml->writeEndElement();

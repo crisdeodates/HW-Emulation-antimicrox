@@ -22,12 +22,12 @@
 #include "globalvariables.h"
 #include "inputdevice.h"
 #include "joystick.h"
+#include "xml/inputdevicexml.h"
 #include "xmlconfigmigration.h"
 #include "xmlconfigwriter.h"
 
 #include "common.h"
 #include "gamecontroller/gamecontroller.h"
-#include "gamecontroller/xml/gamecontrollerxml.h"
 
 #include <QDebug>
 #include <QDir>
@@ -35,6 +35,9 @@
 #include <QStringList>
 #include <QXmlStreamReader>
 
+/**
+ * @brief Main XML config writer class
+ */
 XMLConfigReader::XMLConfigReader(QObject *parent)
     : QObject(parent)
 {
@@ -60,13 +63,13 @@ XMLConfigReader::~XMLConfigReader()
         delete xml;
         xml = nullptr;
     }
-
-    if (!m_joystickXml.isNull())
-        delete m_joystickXml;
 }
 
 void XMLConfigReader::setJoystick(InputDevice *joystick) { m_joystick = joystick; }
 
+/**
+ * @brief Sets the filename of the to be read XML file
+ */
 void XMLConfigReader::setFileName(QString filename)
 {
     QFile *temp = new QFile(filename);
@@ -81,6 +84,10 @@ void XMLConfigReader::setFileName(QString filename)
     }
 }
 
+/**
+ * @brief Read input device config from the current XML file into the InputDevice object
+ * @param[in,out] joystick InputDevice into which the config is read
+ */
 void XMLConfigReader::configJoystick(InputDevice *joystick)
 {
     m_joystick = joystick;
@@ -97,8 +104,10 @@ bool XMLConfigReader::read()
 
         if (!configFile->isOpen())
         {
-            configFile->open(QFile::ReadOnly | QFile::Text);
-            xml->setDevice(configFile);
+            if (configFile->open(QFile::ReadOnly | QFile::Text))
+                xml->setDevice(configFile);
+            else
+                WARN() << "Could not open file: " << configFile->fileName();
         }
 
         xml->readNextStartElement();
@@ -106,7 +115,7 @@ bool XMLConfigReader::read()
         if (!deviceTypes.contains(xml->name().toString()))
         {
             xml->raiseError("Root node is not a joystick or controller");
-        } else if (xml->name() == GlobalVariables::Joystick::xmlName)
+        } else if (xml->name().toString() == GlobalVariables::Joystick::xmlName)
         {
             XMLConfigMigration migration(xml);
 
@@ -138,9 +147,9 @@ bool XMLConfigReader::read()
         {
             if (xml->isStartElement() && deviceTypes.contains(xml->name().toString()))
             {
-                m_joystickXml = new InputDeviceXml(m_joystick);
-                m_joystickXml->readConfig(xml);
-                // if (!m_joystickXml.isNull()) delete m_joystickXml;
+                InputDeviceXml *joystick_xml = new InputDeviceXml(m_joystick);
+                joystick_xml->readConfig(xml);
+                joystick_xml->deleteLater();
             } else
             {
                 // If none of the above, skip the element

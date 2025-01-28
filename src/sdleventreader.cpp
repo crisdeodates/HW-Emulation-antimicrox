@@ -29,7 +29,6 @@
 #include <QDebug>
 #include <QMapIterator>
 #include <QSettings>
-#include <QStringListIterator>
 #include <QVariant>
 
 SDLEventReader::SDLEventReader(QMap<SDL_JoystickID, InputDevice *> *joysticks, AntiMicroSettings *settings, QObject *parent)
@@ -59,9 +58,17 @@ SDLEventReader::~SDLEventReader()
 }
 
 void SDLEventReader::initSDL()
-{ // SDL_INIT_GAMECONTROLLER should automatically initialize SDL_INIT_JOYSTICK
+{
+    // SDL_INIT_GAMECONTROLLER should automatically initialize SDL_INIT_JOYSTICK
     // but it doesn't seem to be the case with v2.0.4
+    // Passing SDL_INIT_SENSOR here triggers bug libsdl-org/SDL#4276 on windows
+    // with v2.0.20. However, sensors works without in Linux and Windows so
+    // skip it.
+    //#if SDL_VERSION_ATLEAST(2, 0, 14)
+    //    SDL_Init(SDL_INIT_GAMECONTROLLER | SDL_INIT_JOYSTICK | SDL_INIT_SENSOR);
+    //#else
     SDL_Init(SDL_INIT_GAMECONTROLLER | SDL_INIT_JOYSTICK);
+    //#endif
     SDL_JoystickEventState(SDL_ENABLE);
 
     sdlIsOpen = true;
@@ -69,11 +76,9 @@ void SDLEventReader::initSDL()
     settings->getLock()->lock();
     settings->beginGroup("Mappings");
     QStringList mappings = settings->allKeys();
-    QStringListIterator iter(mappings);
 
-    while (iter.hasNext())
+    for (auto &&tempstring : mappings)
     {
-        QString tempstring = iter.next();
         QString mappingSetting = settings->value(tempstring, QString()).toString();
 
         if (!mappingSetting.isEmpty())
@@ -259,10 +264,13 @@ void SDLEventReader::loadSdlMappingsFromDatabase()
             qWarning() << "Loading game controller mappings from database: " << database_file << " failed";
         else
             DEBUG() << "Loaded " << result << " game controller mappings from database";
-    } else
+    }
+#ifndef QT_DEBUG
+    else
     {
         qWarning() << "File with game controller mappings " << database_file << " does not exist";
     }
+#endif
 }
 
 QMap<SDL_JoystickID, InputDevice *> *SDLEventReader::getJoysticks() const { return joysticks; }

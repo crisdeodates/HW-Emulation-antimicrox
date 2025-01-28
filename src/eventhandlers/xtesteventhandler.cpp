@@ -158,12 +158,9 @@ void XTestEventHandler::sendTextEntryEvent(QString maintext)
 
                 if (tempList.size() > 0)
                 {
-                    QListIterator<int> tempiter(tempList);
-                    tempiter.toBack();
-
-                    while (tempiter.hasPrevious())
+                    for (auto iter = tempList.crbegin(); iter != tempList.crend(); ++iter)
                     {
-                        int currentcode = tempiter.previous();
+                        int currentcode = *iter;
                         XTestFakeKeyEvent(display, currentcode, 0, 0);
                     }
 
@@ -181,7 +178,5 @@ void XTestEventHandler::sendMouseSpringEvent(int xDis, int yDis, int width, int 
     Q_UNUSED(width);
     Q_UNUSED(height);
 }
-
-void XTestEventHandler::sendMouseSpringEvent(int, int) {}
 
 void XTestEventHandler::printPostMessages() {}

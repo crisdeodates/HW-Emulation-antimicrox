@@ -44,7 +44,7 @@ Joystick::Joystick(SDL_Joystick *joyhandle, int deviceIndex, AntiMicroSettings *
     INFO() << "Created new Joystick:\n" << getDescription();
 }
 
-QString Joystick::getXmlName() { return GlobalVariables::Joystick::xmlName; }
+QString Joystick::getXmlName() const { return GlobalVariables::Joystick::xmlName; }
 
 QString Joystick::getName() { return QString(tr("Joystick")).append(" ").append(QString::number(getRealJoyNumber())); }
 
@@ -60,7 +60,7 @@ QString Joystick::getSDLName()
     return temp;
 }
 
-QString Joystick::getGUIDString()
+QString Joystick::getGUIDString() const
 {
     QString temp = QString();
 
@@ -73,13 +73,13 @@ QString Joystick::getGUIDString()
     return temp;
 }
 
-QString Joystick::getVendorString()
+QString Joystick::getVendorString() const
 {
     QString temp = QString();
 
-    if (controller != nullptr)
+    if (m_joyhandle != nullptr)
     {
-        Uint16 tempVendor = SDL_GameControllerGetVendor(controller);
+        Uint16 tempVendor = SDL_JoystickGetVendor(m_joyhandle);
         char buffer[50];
         sprintf(buffer, "%u", tempVendor);
 
@@ -89,13 +89,13 @@ QString Joystick::getVendorString()
     return temp;
 }
 
-QString Joystick::getProductIDString()
+QString Joystick::getProductIDString() const
 {
     QString temp = QString();
 
-    if (controller != nullptr)
+    if (m_joyhandle != nullptr)
     {
-        Uint16 tempProduct = SDL_GameControllerGetProduct(controller);
+        Uint16 tempProduct = SDL_JoystickGetProduct(m_joyhandle);
         char buffer[50];
         sprintf(buffer, "%u", tempProduct);
 
@@ -105,13 +105,27 @@ QString Joystick::getProductIDString()
     return temp;
 }
 
-QString Joystick::getProductVersion()
+QString Joystick::getSerialString() const
+{
+    QString temp = QString();
+#if SDL_VERSION_ATLEAST(2, 0, 14)
+    if (m_joyhandle != nullptr)
+    {
+        const char *serial = SDL_JoystickGetSerial(m_joyhandle);
+        temp = QString(serial).remove(QRegularExpression("[^A-Za-z0-9]"));
+    }
+#endif
+
+    return temp;
+}
+
+QString Joystick::getProductVersion() const
 {
     QString temp = QString();
 
-    if (controller != nullptr)
+    if (m_joyhandle != nullptr)
     {
-        Uint16 tempProductVersion = SDL_GameControllerGetProductVersion(controller);
+        Uint16 tempProductVersion = SDL_JoystickGetProductVersion(m_joyhandle);
         char buffer[50];
         sprintf(buffer, "%u", tempProductVersion);
 
@@ -121,7 +135,10 @@ QString Joystick::getProductVersion()
     return temp;
 }
 
-QString Joystick::getUniqueIDString() { return (getGUIDString() + getVendorString() + getProductIDString()); }
+QString Joystick::getUniqueIDString() const
+{
+    return (getGUIDString() + getVendorString() + getProductIDString()) + getSerialString();
+}
 
 void Joystick::closeSDLDevice()
 {
@@ -148,6 +165,10 @@ int Joystick::getNumberRawHats()
     int numhats = SDL_JoystickNumHats(m_joyhandle);
     return numhats;
 }
+
+double Joystick::getRawSensorRate(JoySensorType _) { return 0; }
+
+bool Joystick::hasRawSensor(JoySensorType _) { return false; }
 
 void Joystick::setCounterUniques(int counter) { counterUniques = counter; }
 

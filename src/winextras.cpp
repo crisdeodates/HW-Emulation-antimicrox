@@ -14,21 +14,11 @@
 #include "winextras.h"
 #include <shlobj.h>
 
-typedef DWORD(WINAPI *MYPROC)(HANDLE, DWORD, LPTSTR, PDWORD);
+typedef DWORD(WINAPI *MYPROC)(HANDLE, DWORD, LPWSTR, PDWORD);
 // Check if QueryFullProcessImageNameW function exists in kernel32.dll.
 // Function does not exist in Windows XP.
 static MYPROC pQueryFullProcessImageNameW =
     (MYPROC)GetProcAddress(GetModuleHandle(TEXT("kernel32.dll")), "QueryFullProcessImageNameW");
-
-/*static bool isWindowsVistaOrHigher()
-{
-    OSVERSIONINFO osvi;
-    memset(&osvi, 0, sizeof(osvi));
-    osvi.dwOSVersionInfoSize = sizeof(osvi);
-    GetVersionEx(&osvi);
-    return (osvi.dwPlatformId == VER_PLATFORM_WIN32_NT && osvi.dwMajorVersion >= 6);
-}
-*/
 
 const unsigned int WinExtras::EXTENDED_FLAG = 0x100;
 int WinExtras::originalMouseAccel = 0;
@@ -269,24 +259,20 @@ QString WinExtras::getForegroundWindowExePath()
 
     if (windowProcess != NULL)
     {
-        TCHAR filename[MAX_PATH];
-        memset(filename, 0, sizeof(filename));
-        // qDebug() << QString::number(sizeof(filename)/sizeof(TCHAR));
+        WCHAR filename[MAX_PATH];
         if (pQueryFullProcessImageNameW)
         {
             // Windows Vista and later
+            memset(filename, 0, sizeof(filename));
             DWORD pathLength = MAX_PATH * sizeof(TCHAR);
-            pQueryFullProcessImageNameW(windowProcess, 0, filename, &pathLength);
-            // qDebug() << pathLength;
+            BOOL succeded = pQueryFullProcessImageNameW(windowProcess, 0, filename, &pathLength);
+            if (!succeded)
+                qWarning() << "pQueryFullProcessImageNameW returned: " << succeded;
+            exePath = QString::fromWCharArray(filename);
         } else
         {
-            // Windows XP
-            GetModuleFileNameEx(windowProcess, NULL, filename, MAX_PATH * sizeof(TCHAR));
-            // qDebug() << pathLength;
+            qWarning() << "Windows XP is not supported";
         }
-
-        exePath = QString(filename);
-        // qDebug() << QString::fromWCharArray(filename);
         CloseHandle(windowProcess);
     }
 
@@ -344,6 +330,14 @@ void WinExtras::removeFileAssociationFromRegistry()
     SHChangeNotify(SHCNE_ASSOCCHANGED, SHCNF_IDLIST, 0, 0);
 }
 
+// This functions works only with QT6 and newer C++
+const wchar_t *convertCharArrayToLPCWSTR(const char *charArray)
+{
+    wchar_t *wString = new wchar_t[1024];
+    MultiByteToWideChar(CP_ACP, 0, charArray, -1, wString, 1024);
+    return wString;
+}
+
 /**
  * @brief Attempt to elevate process using runas
  * @return Execution status
@@ -358,8 +352,13 @@ bool WinExtras::elevateAntiMicro()
     char *tempfile = ba.data();
     tempverb[5] = '\0';
     tempfile[antiProgramLocation.length()] = '\0';
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+    sei.lpVerb = convertCharArrayToLPCWSTR(tempverb);
+    sei.lpFile = convertCharArrayToLPCWSTR(tempfile);
+#else
     sei.lpVerb = tempverb;
     sei.lpFile = tempfile;
+#endif
     sei.hwnd = NULL;
     sei.nShow = SW_NORMAL;
     BOOL result = ShellExecuteEx(&sei);

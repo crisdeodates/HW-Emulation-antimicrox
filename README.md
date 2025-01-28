@@ -8,10 +8,6 @@
 6. [Testing Under Linux](#testing-under-linux)  
 7. [AntiMicroX Profiles](#antimicrox-profiles)
 8. [Support](#support)  
-9. [Bugs](#bugs)  
-10. [Shoutout](#shoutout)  
-11. [Credits](#credits)  
-12. [Participation in the translation of AntiMicroX](#participation-in-the-translation-of-antimicrox)
 
 ## Description
 
@@ -148,13 +144,8 @@ List of required dependencies and build instructions can be found [here](./BUILD
 
 ### Packages status
 
-Status of package `anitmicrox`:  
-[![Packaging status](https://repology.org/badge/vertical-allrepos/antimicrox.svg)](https://repology.org/project/antimicrox/versions)
-
-And `antimicro` (in cases when it contains AntiMicroX)  
-[![Debian 12 package](https://repology.org/badge/version-for-repo/debian_12/antimicro.svg)](https://repology.org/project/antimicro/versions)  
-[![Debian Stable package](https://repology.org/badge/version-for-repo/debian_stable/antimicro.svg)](https://repology.org/project/antimicro/versions)  
-[![Ubuntu 21.04 package](https://repology.org/badge/version-for-repo/ubuntu_21_04/antimicro.svg)](https://repology.org/project/antimicro/versions)
+Status of package `antimicrox`:  
+[![Packaging status](https://repology.org/badge/vertical-allrepos/antimicrox.svg?columns=3&minversion=3.1)](https://repology.org/project/antimicrox/versions)
 
 ## Command Line
 
@@ -184,7 +175,7 @@ antimicrox to check if the problem is with antimicrox or not. The two endorsed
 programs for testing gamepads outside of antimicrox are **sdl-jstest**
 (**sdl2-jstest**) and **evtest**. SDL2 utilizes evdev on Linux so performing
 testing with older programs that use joydev won't be as helpful since some
-devices behave a bit differently between the two systems. Another method also exist, 
+devices behave a bit differently between the two systems. Another method also exists, 
 which can be found [here](https://github.com/juliagoda/SDL_JoystickButtonNames).
 
 ## AntiMicroX Profiles
@@ -196,46 +187,21 @@ a question or share a suggestion, you can do that on the antimicrox page or on t
 
 ## Support
 
-In order to obtain support, you can post an issue [here](https://github.com/AntiMicroX/antimicrox/issues).
+There are several ways to get help with AntiMicroX. The easiest way is to upvote (with 👍) issues you thing are the most important ones. It is also possible to fund some issues using [Polar](https://polar.sh) platform to attract contributors.
 
-## Bugs
+### Contributing
 
-Application's bugs will be fixed. There are created tests for detecting bugs. Of course, I'm open to proposals or questions from users. 
+Any contributions into codebase are welcome. You can find contribution guide [here](./CONTRIBUTING.md).  
+Some issues are may have bounties which are meant to attract contributors.
 
-## Shoutout
+### Translation
 
-A big, original inspiration for this program was the program QJoyPad.
+Translation process is handled via [Weblate](https://weblate.org/). If you want to help just click this [link](https://hosted.weblate.org/engage/antimicrox).
 
-## Credits
+Translation status
 
-### Contributors
+<a href="https://hosted.weblate.org/engage/antimicrox/">
+<img src="https://hosted.weblate.org/widgets/antimicrox/-/gui/multi-auto.svg" alt="Translation status" />
+</a>
 
-Full list is available [here](https://github.com/AntiMicroX/antimicrox/graphs/contributors)
-
-### Package Maintainers
-
-| **Distro**   | **Maintainer**                        | **Package**                                                                                         |
-| :----------- | :------------------------------------ | :-------------------------------------------------------------------------------------------------- |
-| Arch Linux   | frealgagu                             | [antimicrox](https://aur.archlinux.org/packages/antimicrox/) <sup>AUR</sup>                         |
-| Arch Linux   | FabioLolix                            | [antimicrox-git](https://aur.archlinux.org/packages/antimicrox-git) <sup>AUR</sup>                  |
-| Fedora Linux | [gombosg](https://github.com/gombosg) | antimicrox                                                                                          |
-| Flatpak      | [gombosg](https://github.com/gombosg) | [io.github.antimicrox.antimicrox](https://flathub.org/apps/details/io.github.antimicrox.antimicrox) |
-
-### Translators
-
-VaGNaroK <vagnarokalkimist@gmail.com> - Brazilian Portuguese  
-zzpxyx - Chinese  
-Belleguic Terence <hizo@free.fr> - French  
-Leonard Koenig <leonard.r.koenig@googlemail.com> - German  
-phob - German  
-tou omiya - Japanese  
-Dmitriy Koshel <form.eater@gmail.com> - Russian  
-Jay Alexander Fleming <tito.nehru.naser@gmail.com> - Serbian  
-burunduk - Ukrainian  
-Flavio HR <flavio.hrx@gmail.com> - Spanish  
-WAZAAAAA - <wazaaaaa00@gmail.com> - Italian  
-juliagoda <juliagoda.pl@protonmail.com> - Polish
-
-## Participation in the translation of AntiMicroX
-
-If you want to participate in the translation of the program, but your language is not yet on the support list. Please check [this link](https://github.com/AntiMicroX/antimicrox/issues/1).
+More information about translating can be found [here](https://github.com/AntiMicroX/antimicrox/wiki/Translating-AntiMicroX).

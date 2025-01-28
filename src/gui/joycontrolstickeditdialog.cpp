@@ -45,6 +45,9 @@ JoyControlStickEditDialog::JoyControlStickEditDialog(JoyControlStick *stick, boo
     this->keypadUnlocked = keypadUnlocked;
     setAttribute(Qt::WA_DeleteOnClose);
 
+    auto min_width = ui->xCoordinateLabel->fontMetrics().boundingRect(QString("X.XXXXXXXXX")).width();
+    ui->xCoordinateLabel->setMinimumWidth(min_width);
+
     this->stick = stick;
     getHelperLocal().moveToThread(stick->thread());
 
@@ -57,6 +60,10 @@ JoyControlStickEditDialog::JoyControlStickEditDialog(JoyControlStick *stick, boo
 
     ui->maxZoneSlider->setValue(stick->getMaxZone());
     ui->maxZoneSpinBox->setValue(stick->getMaxZone());
+
+    ui->modifierZoneSlider->setValue(stick->getModifierZone());
+    ui->modifierZoneSpinBox->setValue(stick->getModifierZone());
+    ui->modifierZoneInvertedCheckBox->setCheckState(stick->getModifierZoneInverted() ? Qt::Checked : Qt::Unchecked);
 
     ui->diagonalRangeSlider->setValue(stick->getDiagonalRange());
     ui->diagonalRangeSpinBox->setValue(stick->getDiagonalRange());
@@ -167,6 +174,13 @@ JoyControlStickEditDialog::JoyControlStickEditDialog(JoyControlStick *stick, boo
     connect(ui->modifierPushButton, &QPushButton::clicked, this, &JoyControlStickEditDialog::openModifierEditDialog);
     connect(stick->getModifierButton(), &JoyControlStickModifierButton::slotsChanged, this,
             &JoyControlStickEditDialog::changeModifierSummary);
+    connect(ui->modifierZoneSlider, &QSlider::valueChanged, ui->modifierZoneSpinBox, &QSpinBox::setValue);
+    connect(ui->modifierZoneSpinBox, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), ui->modifierZoneSlider,
+            &QSlider::setValue);
+    connect(ui->modifierZoneSpinBox, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), stick,
+            &JoyControlStick::setModifierZone);
+    connect(ui->modifierZoneInvertedCheckBox, &QCheckBox::stateChanged, stick,
+            [stick](int state) { stick->setModifierZoneInverted(state == Qt::Checked); });
 }
 
 // for tests

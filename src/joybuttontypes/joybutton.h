@@ -38,12 +38,17 @@ class QXmlStreamWriter;
 // class QThread;
 class QThreadPool;
 
+/**
+ * @brief Represents a single joystick button being part of a SetJoystick
+ *  Contains multiple JoyButtonSlots which do the actual mapping.
+ *  Also has various static methods for mouse cursor movement.
+ */
 class JoyButton : public QObject
 {
     Q_OBJECT
 
   public:
-    explicit JoyButton(int index, int originset, SetJoystick *parentSet, QObject *parent);
+    explicit JoyButton(int sdl_button_index, int originset, SetJoystick *parentSet, QObject *parent);
     ~JoyButton();
 
     enum SetChangeCondition
@@ -96,7 +101,6 @@ class JoyButton : public QObject
     void setJoyNumber(int index);
     void clearPendingEvent(); // JoyButtonEvents class
     void setCustomName(QString name);
-    void copyExtraAccelerationState(JoyButton *srcButton);
     void setUpdateInitAccel(bool state);
     void removeVDPad();
     void setIgnoreEventState(bool ignore); // JoyButtonEvents class
@@ -163,7 +167,9 @@ class JoyButton : public QObject
 
     virtual bool isPartRealAxis();
     virtual bool isModifierButton();
-    virtual bool isDefault();
+    bool isDefault();
+
+    virtual JoyMouseCurve getDefaultMouseCurve() const;
 
     virtual int getRealJoyNumber() const;
 
@@ -212,11 +218,11 @@ class JoyButton : public QObject
     static bool hasSpringEvents(QList<PadderCommon::springModeInfo> *springXSpeedsList,
                                 QList<PadderCommon::springModeInfo> *springYSpeedsList); // JoyButtonEvents class
     static bool shouldInvokeMouseEvents(QList<JoyButton *> *pendingMouseButtons, QTimer *staticMouseEventTimer,
-                                        QTime *testOldMouseTime); // JoyButtonEvents class
+                                        QElapsedTimer *testOldMouseTime);
 
     static void setWeightModifier(double modifier, double maxWeightModifier, double &weightModifier);
     static void moveMouseCursor(int &movedX, int &movedY, int &movedElapsed, QList<double> *mouseHistoryX,
-                                QList<double> *mouseHistoryY, QTime *testOldMouseTime, QTimer *staticMouseEventTimer,
+                                QList<double> *mouseHistoryY, QElapsedTimer *testOldMouseTime, QTimer *staticMouseEventTimer,
                                 int mouseRefreshRate, int mouseHistorySize, QList<JoyButton::mouseCursorInfo> *cursorXSpeeds,
                                 QList<JoyButton::mouseCursorInfo> *cursorYSpeeds, double &cursorRemainderX,
                                 double &cursorRemainderY, double weightModifier, int idleMouseRefrRate,
@@ -229,12 +235,13 @@ class JoyButton : public QObject
                                     QList<double> *mouseHistoryY);
     static void setMouseRefreshRate(int refresh, int &mouseRefreshRate, int idleMouseRefrRate,
                                     JoyButtonMouseHelper *mouseHelper, QList<double> *mouseHistoryX,
-                                    QList<double> *mouseHistoryY, QTime *testOldMouseTime, QTimer *staticMouseEventTimer);
+                                    QList<double> *mouseHistoryY, QElapsedTimer *testOldMouseTime,
+                                    QTimer *staticMouseEventTimer);
     static void setSpringModeScreen(int screen, int &springModeScreen);
     static void resetActiveButtonMouseDistances(JoyButtonMouseHelper *mouseHelper);
     static void setGamepadRefreshRate(int refresh, int &gamepadRefreshRate, JoyButtonMouseHelper *mouseHelper);
-    static void restartLastMouseTime(QTime *testOldMouseTime);
-    static void setStaticMouseThread(QThread *thread, QTimer *staticMouseEventTimer, QTime *testOldMouseTime,
+    static void restartLastMouseTime(QElapsedTimer *testOldMouseTime);
+    static void setStaticMouseThread(QThread *thread, QTimer *staticMouseEventTimer, QElapsedTimer *testOldMouseTime,
                                      int idleMouseRefrRate, JoyButtonMouseHelper *mouseHelper);
     static void indirectStaticMouseThread(QThread *thread, QTimer *staticMouseEventTimer, JoyButtonMouseHelper *mouseHelper);
     static void invokeMouseEvents(JoyButtonMouseHelper *mouseHelper); // JoyButtonEvents class
@@ -246,7 +253,7 @@ class JoyButton : public QObject
     static QList<PadderCommon::springModeInfo> *getSpringXSpeeds();
     static QList<PadderCommon::springModeInfo> *getSpringYSpeeds();
     static QTimer *getStaticMouseEventTimer(); // JoyButtonEvents class
-    static QTime *getTestOldMouseTime();
+    static QElapsedTimer *getTestOldMouseTime();
 
     JoyExtraAccelerationCurve getExtraAccelerationCurve();
 
@@ -293,7 +300,7 @@ class JoyButton : public QObject
     static JoyButtonSlot *lastActiveKey; // JoyButtonSlots class
     static JoyButtonMouseHelper mouseHelper;
 
-    int m_index; // Used to denote the SDL index of the actual joypad button
+    int m_index_sdl; // Used to denote the SDL index of the actual joypad button
     int turboInterval;
     int wheelSpeedX;
     int wheelSpeedY;
@@ -629,9 +636,9 @@ class JoyButton : public QObject
     QElapsedTimer buttonHeldRelease;
     QElapsedTimer keyPressHold;
     QElapsedTimer buttonDelay;
-    QTime accelExtraDurationTime;
+    QElapsedTimer accelExtraDurationTime;
     QElapsedTimer cycleResetHold;
-    static QTime testOldMouseTime;
+    static QElapsedTimer testOldMouseTime;
 
     VDPad *m_vdpad;
     JoyMouseMovementMode mouseMode;

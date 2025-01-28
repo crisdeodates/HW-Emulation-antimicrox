@@ -19,8 +19,8 @@
 #include "joytabwidgethelper.h"
 
 #include "inputdevice.h"
-#include "joybutton.h"
 #include "joybuttonslot.h"
+#include "joybuttontypes/joybutton.h"
 #include "logger.h"
 #include "xml/inputdevicexml.h"
 #include "xmlconfigreader.h"
@@ -66,6 +66,9 @@ bool JoyTabWidgetHelper::hasError() { return errorOccurred; }
 
 QString JoyTabWidgetHelper::getErrorString() { return lastErrorString; }
 
+/**
+ * @brief XML read entry point for the GUI
+ */
 bool JoyTabWidgetHelper::readConfigFile(QString filepath)
 {
     bool result = false;
@@ -101,6 +104,9 @@ bool JoyTabWidgetHelper::readConfigFileWithRevert(QString filepath)
     return readConfigFile(filepath);
 }
 
+/**
+ * @brief XML write entry point for the GUI
+ */
 bool JoyTabWidgetHelper::writeConfigFile(QString filepath)
 {
     bool result = false;

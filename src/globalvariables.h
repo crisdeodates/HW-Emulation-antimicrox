@@ -21,6 +21,7 @@
 
 #include <QList>
 #include <QObject>
+#include <QRegularExpression>
 
 namespace GlobalVariables {
 class JoyButton
@@ -67,6 +68,7 @@ class JoyButton
     static const int DEFAULTTURBOINTERVAL;
     static const int DEFAULTMOUSESPEEDX;
     static const int DEFAULTMOUSESPEEDY;
+    static const int MAXMOUSESPEED;
     static const int DEFAULTSETSELECTION;
     static const int DEFAULTSPRINGWIDTH;
     static const int DEFAULTSPRINGHEIGHT;
@@ -105,8 +107,8 @@ class InputDevice
     static const int DEFAULTKEYREPEATDELAY;
     static const int DEFAULTKEYREPEATRATE;
 
-    // static QRegExp emptyGUID;
-    static QRegExp emptyUniqueID;
+    // static QRegularExpression emptyGUID;
+    static QRegularExpression emptyUniqueID;
 };
 
 class JoyAxis
@@ -120,6 +122,17 @@ class JoyAxis
     static const float JOYSPEED;
 
     static const QString xmlName;
+};
+
+class HapticTriggerPs5
+{
+  public:
+    static const int CLICKSTRENGTH;
+    static const int RIGIDSTRENGTH;
+    static const int RIGIDGRADIENTSTRENGTH;
+    static const int VIBRATIONSTRENGTH;
+    static const int RANGE;
+    static const int FREQUENCY;
 };
 
 #ifdef WITH_X11
@@ -203,9 +216,23 @@ class JoyControlStick
     // Define default values for stick properties.
     static const int DEFAULTDEADZONE;
     static const int DEFAULTMAXZONE;
+    static const int DEFAULTMODIFIERZONE;
+    static const bool DEFAULTMODIFIERZONEINVERTED;
     static const int DEFAULTDIAGONALRANGE;
     static const double DEFAULTCIRCLE;
     static const int DEFAULTSTICKDELAY;
+};
+
+class JoySensor
+{
+  public:
+    static const double ACCEL_MIN;
+    static const double ACCEL_MAX;
+    static const double GYRO_MIN;
+    static const double GYRO_MAX;
+    static const double DEFAULTDEADZONE;
+    static const int DEFAULTDIAGONALRANGE;
+    static const unsigned int DEFAULTSENSORDELAY;
 };
 
 class JoyButtonSlot
@@ -235,6 +262,12 @@ class JoyControlStickButton
 };
 
 class JoyControlStickModifierButton
+{
+  public:
+    static const QString xmlName;
+};
+
+class JoySensorButton
 {
   public:
     static const QString xmlName;

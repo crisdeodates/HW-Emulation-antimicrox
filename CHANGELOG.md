@@ -1,5 +1,274 @@
 # Changelog
 
+## [3.5.1](https://github.com/AntiMicroX/antimicrox/tree/3.5.1) (2025-01-27)
+
+**Fixed bugs:**
+
+- Fix appId on Wayland [pull 1100](https://github.com/AntiMicroX/antimicrox/pull/1100)
+- Wrong install dependencies on a Debian build with QT6 [\#1104](https://github.com/AntiMicroX/antimicrox/issues/1104)
+
+**Notable changes:**
+
+- New translation: Tamil
+- Update translation for: Spanish, French, Japanese, Finnish, 
+- Create deb release dor Ubuntu 24.04
+- Update Windows and Linux SDL mappings
+- Add "game" category to desktop file [pull 1085](https://github.com/AntiMicroX/antimicrox/pull/1085) (by [Fr-Dae](https://github.com/Fr-Dae))
+- Cleanup in logs
+- Add proper note informing about lack of Wayland support for Auto Profiles
+- Cleanup in dependencies
+- Fix some typos and update docs (by [zturtleman](https://github.com/zturtleman) )
+
+**Implemented enhancements:**
+
+- Reenabled `--next` option [\#189](https://github.com/AntiMicroX/antimicrox/issues/189)
+
+## [3.5.0](https://github.com/AntiMicroX/antimicrox/tree/3.5.0) (2024-10-31)
+
+**Fixed bugs:**
+
+- Horizontal mouse wheel is too fast when set on stick [\#1024](https://github.com/AntiMicroX/antimicrox/issues/1024) (by [sk2449](https://github.com/sk2449))
+- Fix binding labels for Wheel Left/Right buttons [pull 1038](https://github.com/AntiMicroX/antimicrox/pull/1038) (by [sk2449](https://github.com/sk2449))
+- Set change sometimes returns to wrong set [\#1050](https://github.com/AntiMicroX/antimicrox/issues/1050)
+- Wrong Keyboard Input on Assignment (Wayland) [\#300](https://github.com/AntiMicroX/antimicrox/issues/300)
+
+**Notable changes:**
+
+- Update translation for Finnish, Dutch, Russian
+- New translation: Indonesian
+- Fixed Builds for QT6 on Windows
+- Switched to QT6 on Windows Release Build
+
+## [3.4.1](https://github.com/AntiMicroX/antimicrox/tree/3.4.1) (2024-08-10)
+
+**Fixed bugs:**
+
+- Fix issues with accelerometer stability [pull 1011](https://github.com/AntiMicroX/antimicrox/pull/1011) (by [pepper-jelly](https://github.com/pepper-jelly))
+-  Issue with float value for "Auto Reset Cycle After" [\#1002](https://github.com/AntiMicroX/antimicrox/issues/1002) (by [pepper-jelly](https://github.com/pepper-jelly))
+-  Accelerometer triggers when switching sets [\#991](https://github.com/AntiMicroX/antimicrox/issues/991) (by [pepper-jelly](https://github.com/pepper-jelly))
+
+**Notable changes:**
+
+- Link AntimicroX repository with issue hunting platform: [Polar.sh](https://polar.sh/)
+- Bump SDL version to 2.30.6
+- Refactor outdated pieces of code [pull 948](https://github.com/AntiMicroX/antimicrox/pull/948) [pull 950](https://github.com/AntiMicroX/antimicrox/pull/950)
+- Update more universal QT libraries detection [pull 957](https://github.com/AntiMicroX/antimicrox/pull/957)
+- Allow easy building with QT6 and ensure compatability [pull 919](https://github.com/AntiMicroX/antimicrox/pull/919), [pull 972](https://github.com/AntiMicroX/antimicrox/pull/972)
+- Drop Windows XP support [pull 980](https://github.com/AntiMicroX/antimicrox/pull/980)
+- Bump minimal QT version requirement to 5.10 [\#996](https://github.com/AntiMicroX/antimicrox/issues/996)
+
+
+**Implemented enhancements:**
+
+- Updated translations: Chinese, Portugese, German, French and Finnish
+- Added Catalan language
+
+And a lot of minor fixes and cleanups linked with QT6 and not only.
+
+## [3.4.0](https://github.com/AntiMicroX/antimicrox/tree/3.4.0) (2024-03-10)
+
+**Fixed bugs:**
+
+- Fix attaching window to a pinned launcher in Linux [pull 886](https://github.com/AntiMicroX/antimicrox/pull/886) (by [mmmaisel](https://github.com/mmmaisel))
+- Fixing builds with X11=OFF [pull 927](https://github.com/AntiMicroX/antimicrox/pull/927) (by [sjoblomj](https://github.com/sjoblomj))
+
+**Notable changes:**
+
+- Bump SDL version to 2.30.1
+- Updated translations
+- New translations: Croatian, Turkish, Persian, Vietnamese
+- Fix a lot of deprecation warnings and other code changes required to migrate to QT6 [\#446](https://github.com/AntiMicroX/antimicrox/issues/446)
+
+## [3.3.4](https://github.com/AntiMicroX/antimicrox/tree/3.3.4) (2023-06-03)
+
+**Implemented enhancements:**
+
+- Update translations: Portugese(Brazil), Russian, Norwegian Bokmal
+- Add translations: Swedish
+
+**Fixed bugs:**
+
+- Fix and refactor adding default autoprofile  [\#727](https://github.com/AntiMicroX/antimicrox/issues/727)
+- Fix GUI does not recognize super + action [\#749](https://github.com/AntiMicroX/antimicrox/issues/749)
+- Fix /dev/uinput static device node access [pull 781](https://github.com/AntiMicroX/antimicrox/pull/781) (by [lnussel](https://github.com/lnussel))
+- Fix building for SDL version between 2.0.12 and 2.0.16 [\#788](https://github.com/AntiMicroX/antimicrox/issues/788)
+
+
+**Notable changes:**
+
+- Build AppImage package on Ubuntu 20.04
+- Bump SDL version for AppImage and Windows from 2.0.20 to 2.26.5
+
+## [3.3.3](https://github.com/AntiMicroX/antimicrox/tree/3.3.3) (2023-01-30)
+
+**Implemented enhancements:**
+
+- Add checkbox enabling numeric keypad in ButtonEditDialog [\#168](https://github.com/AntiMicroX/antimicrox/issues/168)
+- Add MSVC cmake support. [\#667](https://github.com/AntiMicroX/antimicrox/pull/667) (by [nitz](https://github.com/nitz))
+- Update translations: Spanish, Korean, Russian
+- Add translations: Rusyn, Portugese(Brazil)
+
+**Fixed bugs:**
+
+- Name mismatch in set selector list [\#655](https://github.com/AntiMicroX/antimicrox/issues/655)
+- Fix broken loading recently used profile for Windows 11 [\#632](https://github.com/AntiMicroX/antimicrox/issues/632) (by [nitz](https://github.com/nitz))
+- Shebang ignored in execute bind [\#699](https://github.com/AntiMicroX/antimicrox/issues/699)
+- Mouse spring mode not working in wayland session [\#521](https://github.com/AntiMicroX/antimicrox/issues/521)
+
+**Notable changes:**
+
+- Some code refactors and docs updates
+- Logs improvements
+
+## [3.3.2](https://github.com/AntiMicroX/antimicrox/tree/3.3.2) (2022-11-21)
+
+**Implemented enhancements:**
+
+- Use proper theme-based color for tab text [\#583](https://github.com/AntiMicroX/antimicrox/pull/583)
+- Show joystick battery level in tab [\#596](https://github.com/AntiMicroX/antimicrox/pull/596)
+
+**Fixed bugs:**
+
+- Fix broken obtaining path of active window by auto profile [\#592](https://github.com/AntiMicroX/antimicrox/pull/592)
+- Fix auto profile dialog does not populate title and application fields
+- Fix misspeled __BIG_ENDIAN constant [\#609](https://github.com/AntiMicroX/antimicrox/pull/599)
+- Fix advanced settings dialog freezes when pressing join on Linux [\#609](https://github.com/AntiMicroX/antimicrox/pull/609)
+- Remove disabling Auto-profile title box [\#619](https://github.com/AntiMicroX/antimicrox/pull/619)
+
+**Notable changes:**
+
+- don't minimize to taskbar by default on Linux [\#611](https://github.com/AntiMicroX/antimicrox/pull/611)
+
+**Full Changelog**: https://github.com/AntiMicroX/antimicrox/compare/3.3.1...3.3.2
+
+## [3.3.1](https://github.com/AntiMicroX/antimicrox/tree/3.3.1) (2022-10-24)
+
+[Full Changelog](https://github.com/AntiMicroX/antimicrox/compare/3.3.0...3.3.1)
+
+Hotfix release reverting PR [\#555](https://github.com/AntiMicroX/antimicrox/pull/555) which can cause segfaults.
+
+## [3.3.0](https://github.com/AntiMicroX/antimicrox/tree/3.3.0) (2022-10-24)
+
+[Full Changelog](https://github.com/AntiMicroX/antimicrox/compare/3.2.5...3.3.0)
+
+
+**Implemented enhancements:**
+
+- Add support for DualSense trigger haptic feedback [\#503](https://github.com/AntiMicroX/antimicrox/pull/503) (by [mmmaisel](https://github.com/mmmaisel))
+- Add Portable Windows build [\#523](https://github.com/AntiMicroX/antimicrox/pull/523) (by [AntumDeluge](https://github.com/AntumDeluge))
+
+**Fixed bugs:**
+
+- Broken auto profile saving for Windows  [\#492](https://github.com/AntiMicroX/antimicrox/pull/492)
+- Selection "None" Preset does not change button labels [\#513](https://github.com/AntiMicroX/antimicrox/pull/513)
+- Broken spring mouse Event on Windows [\#518](https://github.com/AntiMicroX/antimicrox/pull/518)
+- Multiple problems caused by invalid thread handling [\#573](https://github.com/AntiMicroX/antimicrox/pull/573)
+  - Saving PS4 Controller setup stops set toggle from working
+  - Saving Breaks Set Switching
+  - Saving config breaks turbo
+  - Warnings `QObject: Cannot create children for a parent that is in a different thread`
+
+**Notable changes:**
+
+- Fix some code warnings  [\#497](https://github.com/AntiMicroX/antimicrox/pull/497) [\#558](https://github.com/AntiMicroX/antimicrox/pull/558) [\#559](https://github.com/AntiMicroX/antimicrox/pull/559) (by [pktiuk](https://github.com/pktiuk) and [Stefan-TU](https://github.com/Stefan-TU))
+- Remove some unused code [\#504](https://github.com/AntiMicroX/antimicrox/pull/504) (by [mmmaisel](https://github.com/mmmaisel))
+- Limit number of logged events
+- Include Visual Studio Code config files
+- Some refactors and docs updates
+- Update SDL mappings database
+- Update translations: Korean, Ukrainian, Spanish
+
+## [3.2.5](https://github.com/AntiMicroX/antimicrox/tree/3.2.5) (2022-07-18)
+
+[Full Changelog](https://github.com/AntiMicroX/antimicrox/compare/3.2.4...3.2.5)
+
+Test release containing changes implementing motion sensor support.
+
+**Implemented enhancements:**
+
+- Implement motion sensor support. [\#416](https://github.com/AntiMicroX/antimicrox/pull/416) (by [mmmaisel](https://github.com/mmmaisel))
+- Allow storing calibration for multiple controllers in a profile [\#460](https://github.com/AntiMicroX/antimicrox/pull/460) (by [mmmaisel](https://github.com/mmmaisel))
+
+**Fixed bugs:**
+
+- Crash on close after copying set. [\#454](https://github.com/AntiMicroX/antimicrox/issues/454) (by [mmmaisel](https://github.com/mmmaisel))
+
+**Notable changes:**
+
+- Remove unused "Game Controller Mapping" button.
+
+## [3.2.4](https://github.com/AntiMicroX/antimicrox/tree/3.2.4) (2022-06-11)
+
+[Full Changelog](https://github.com/AntiMicroX/antimicrox/compare/3.2.3...3.2.4)
+
+**Implemented enhancements:**
+
+- Implement modifier button threshold zone [\#310](https://github.com/AntiMicroX/antimicrox/issues/310) (by [mmmaisel](https://github.com/mmmaisel)) - This allows mapping the analog range of a stick to walk/run in game without dedicated spring button.
+
+**Fixed bugs:**
+
+- Fix mouse calculations for multiple mice [\#435](https://github.com/AntiMicroX/antimicrox/pull/435) (by [mmmaisel](https://github.com/mmmaisel))
+- Fix flickering JoyControlStickEditDialog layout [\#440](https://github.com/AntiMicroX/antimicrox/pull/440) (by [mmmaisel](https://github.com/mmmaisel))
+- Implement proper offset and gain stick calibration [\#441](https://github.com/AntiMicroX/antimicrox/pull/441) (by [mmmaisel](https://github.com/mmmaisel))
+
+**Notable changes:**
+
+- Increase minimum size of ButtonEditDialog [\#439](https://github.com/AntiMicroX/antimicrox/pull/439) (by [mmmaisel](https://github.com/mmmaisel))
+- Fixes in translation utulities
+  - Rename flag TRANS_KEEP_OBSOLETE to TRANS_REMOVE_OBSOLETE to improve readability
+  - Fix wrong argument for utility deleting obsolete translations [\#445](https://github.com/AntiMicroX/antimicrox/pull/445)
+- Update translations:
+  - Russian
+  - Finnish
+  - French
+  - Chinese
+  - Portuguese
+
+## [3.2.3](https://github.com/AntiMicroX/antimicrox/tree/3.2.3) (2022-03-24)
+
+[Full Changelog](https://github.com/AntiMicroX/antimicrox/compare/3.2.2...3.2.3)
+
+**Fixed bugs:**
+
+- Fixed bug: auto profile not saved when exe path is not defined [\#252](https://github.com/AntiMicroX/antimicrox/issues/252)
+
+**Notable changes:**
+
+- Added missing license for SDL_GameControllerDB
+- Many updates in translations:
+  - Added Finnish translation by [heidiwenger](https://github.com/heidiwenger)
+  - Added Norwegian Bokmål translation bu [comradekingu](https://github.com/comradekingu)
+  - Updated German, French, Italian and Polish translations
+  - update translation files
+- Always show battery level in joystick status window (even when unknown)
+- Multiple refactors and cleanups removing deprecated code (kudos to [mmmaisel](https://github.com/mmmaisel)).
+
+## [3.2.2](https://github.com/AntiMicroX/antimicrox/tree/3.2.2) (2022-02-24)
+
+[Full Changelog](https://github.com/AntiMicroX/antimicrox/compare/3.2.1...3.2.2)
+
+**Implemented enhancements:**
+
+- Add support for special characters in Windows log files [\#363](https://github.com/AntiMicroX/antimicrox/pull/363)
+- Change default working directory of launched executables [\#377](https://github.com/AntiMicroX/antimicrox/pull/377)
+
+**Fixed bugs:**
+
+- Fix typo (setting->settings) (by [jose1711](https://github.com/jose1711))
+- Random Crashes during longer sessions [\#133](https://github.com/AntiMicroX/antimicrox/issues/133)
+- File with gamecontroller mappings not found [\#364](https://github.com/AntiMicroX/antimicrox/pull/364)
+- Empty application path in autoprofile [/#371](https://github.com/AntiMicroX/antimicrox/pull/371)
+
+**Notable changes:**
+
+- Enable checking for updates in Debian builds from GitHub
+- Log improvements and cleanup [\#336](https://github.com/AntiMicroX/antimicrox/pull/336) [\#342](https://github.com/AntiMicroX/antimicrox/pull/342)
+- Daemon mode support removed [\#345](https://github.com/AntiMicroX/antimicrox/pull/345)
+- Remove unused "map" and "display" argument options [\#350](https://github.com/AntiMicroX/antimicrox/pull/350)
+- Remove unused files With icons, resources and pertially implemented importing utility
+- Use colourful antimicrox icon in tray by default [\#361](https://github.com/AntiMicroX/antimicrox/pull/361)
+- Update building docs [\#370](https://github.com/AntiMicroX/antimicrox/pull/370) (by [zpangwin](https://github.com/zpangwin))
+
 ## [3.2.1](https://github.com/AntiMicroX/antimicrox/tree/3.2.1) (2022-01-03)
 
 [Full Changelog](https://github.com/AntiMicroX/antimicrox/compare/3.2.0...3.2.1)

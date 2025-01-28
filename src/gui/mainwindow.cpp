@@ -36,6 +36,7 @@
 #include "joycontrolstickbuttonpushbutton.h"
 #include "joycontrolstickpushbutton.h"
 #include "joydpadbuttonwidget.h"
+#include "joysensorpushbutton.h"
 #include "joystick.h"
 #include "joystickstatuswindow.h"
 #include "joytabwidget.h"
@@ -72,6 +73,7 @@
 
 #ifdef CHECK_FOR_UPDATES
     #include <QJsonDocument>
+    #include <QJsonObject>
 #endif
 
 #include <SDL2/SDL_joystick.h>
@@ -189,11 +191,8 @@ MainWindow::MainWindow(QMap<SDL_JoystickID, InputDevice *> *joysticks, CommandLi
     {
         if (!WinExtras::IsRunningAsAdmin())
         {
-            if (QSysInfo::windowsVersion() >= QSysInfo::WV_VISTA)
-            {
-                QIcon uacIcon = QApplication::style()->standardIcon(QStyle::SP_VistaShield);
-                ui->uacPushButton->setIcon(uacIcon);
-            }
+            QIcon uacIcon = QApplication::style()->standardIcon(QStyle::SP_VistaShield);
+            ui->uacPushButton->setIcon(uacIcon);
             connect(ui->uacPushButton, SIGNAL(clicked()), this, SLOT(restartAsElevated()));
         } else
         {
@@ -846,6 +845,13 @@ void MainWindow::enableFlashActions()
             stickWidget->tryFlash();
         }
 
+        QList<JoySensorPushButton *> sensors = ui->tabWidget->widget(i)->findChildren<JoySensorPushButton *>();
+        for (const auto &sensorWidget : sensors)
+        {
+            sensorWidget->enableFlashes();
+            sensorWidget->tryFlash();
+        }
+
         QList<JoyDPadButtonWidget *> list4 = ui->tabWidget->widget(i)->findChildren<JoyDPadButtonWidget *>();
         QListIterator<JoyDPadButtonWidget *> iter4(list4);
         while (iter4.hasNext())
@@ -1093,19 +1099,11 @@ void MainWindow::openCalibration()
 
             if (device != nullptr)
             {
-                JoyControlStick *joystick = device->getActiveSetJoystick()->getJoyStick(0);
-                if (joystick != nullptr)
-                {
-                    QPointer<Calibration> calibration = new Calibration(device);
-                    calibration.data()->show();
+                QPointer<Calibration> calibration = new Calibration(device);
+                calibration.data()->show();
 
-                    if (calibration.isNull())
-                        calibration.clear();
-                } else
-                {
-                    QMessageBox::information(this, tr("Calibration is not available."),
-                                             tr("Selected device doesn't have any joystick to calibrate."));
-                }
+                if (calibration.isNull())
+                    calibration.clear();
             }
         }
     }
@@ -1410,11 +1408,8 @@ void MainWindow::restartAsElevated()
                    "This is due to permission problems caused by User Account "
                    "Control (UAC) options in Windows Vista and later."));
 
-    if (QSysInfo::windowsVersion() >= QSysInfo::WV_VISTA)
-    {
-        QIcon uacIcon = QApplication::style()->standardIcon(QStyle::SP_VistaShield);
-        msg.button(QMessageBox::Yes)->setIcon(uacIcon);
-    }
+    QIcon uacIcon = QApplication::style()->standardIcon(QStyle::SP_VistaShield);
+    msg.button(QMessageBox::Yes)->setIcon(uacIcon);
 
     int result = msg.exec();
     if (result == QMessageBox::Yes)
@@ -1548,10 +1543,10 @@ void MainWindow::autoprofileLoad(AutoProfileInfo *info)
 {
     if (info != nullptr)
     {
-        qDebug() << QObject::tr("Auto-switching to profile \"%1\".").arg(info->getProfileLocation());
+        qDebug() << QString("Auto-switching to profile \"%1\".").arg(info->getProfileLocation());
     } else
     {
-        qCritical() << QObject::tr("Auto-switching to nullptr profile!");
+        qCritical() << QString("Auto-switching to nullptr profile!");
     }
 #if defined(WITH_X11) || defined(Q_OS_WIN)
     #if defined(WITH_X11)
@@ -1723,7 +1718,8 @@ void MainWindow::networkManagerFinished(QNetworkReply *reply)
         return;
     }
     QJsonDocument json = QJsonDocument::fromJson(reply->readAll());
-    QString latest_version = json["tag_name"].toString();
+    QJsonObject doc = json.object();
+    QString latest_version = doc["tag_name"].toString().split("-")[0]; // remove notes from versions like 3.2.1-debug
     DEBUG() << "Latest version: " << latest_version << " Installed version: " << PadderCommon::programVersion;
     if (latest_version != PadderCommon::programVersion && latest_version.length())
     {
@@ -1876,7 +1872,8 @@ void MainWindow::convertGUIDtoUniqueID(InputDevice *currentDevice, QString contr
         {
             QTextStream out(&newData);
             out << dataText;
-        }
+        } else
+            WARN() << "Could not open file: " << newData.fileName();
 
         newData.close();
 

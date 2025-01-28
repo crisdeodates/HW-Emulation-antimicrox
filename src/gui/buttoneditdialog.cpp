@@ -21,7 +21,7 @@
 
 #include "advancebuttondialog.h"
 #include "inputdevice.h"
-#include "joybutton.h"
+#include "joybuttontypes/joybutton.h"
 #include "keyboard/virtualkeyboardmousewidget.h"
 #include "quicksetdialog.h"
 
@@ -56,11 +56,7 @@ ButtonEditDialog::ButtonEditDialog(InputDevice *joystick, bool isNumKeypad, QWid
 
     withoutQuickSetDialog = false;
     m_isNumKeypad = isNumKeypad;
-
-    if (m_isNumKeypad)
-    {
-        setMinimumSize(844, 480);
-    }
+    ui->attachNumKeypadCheckbox->setChecked(isNumKeypad);
 
     setAttribute(Qt::WA_DeleteOnClose);
     setWindowTitle(tr("Choose your keyboard key"));
@@ -75,102 +71,34 @@ ButtonEditDialog::ButtonEditDialog(InputDevice *joystick, bool isNumKeypad, QWid
     currentset->release();
     joystick->resetButtonDownCount();
 
-    setMinimumHeight(460);
     setAttribute(Qt::WA_DeleteOnClose);
     setWindowModality(Qt::WindowModal);
 
     ignoreRelease = false;
 
-    PadderCommon::inputDaemonMutex.lock();
-
-    ui->virtualKeyMouseTabWidget->hide();
-    ui->virtualKeyMouseTabWidget->deleteLater();
-    ui->virtualKeyMouseTabWidget =
-        new VirtualKeyboardMouseWidget(joystick, &helper, m_isNumKeypad, currentQuickDialog, nullptr, this);
-    ui->verticalLayout->insertWidget(1, ui->virtualKeyMouseTabWidget);
-
-    PadderCommon::inputDaemonMutex.unlock();
+    setupVirtualKeyboardMouseTabWidget();
 
     connect(qApp, &QApplication::focusChanged, this, &ButtonEditDialog::checkForKeyboardWidgetFocus);
-
-    connect(ui->virtualKeyMouseTabWidget, &VirtualKeyboardMouseWidget::selectionCleared, this,
-            &ButtonEditDialog::refreshSlotSummaryLabel);
-
-    connect(this, &ButtonEditDialog::keyGrabbed, this, &ButtonEditDialog::processSlotAssignment);
-    connect(this, &ButtonEditDialog::selectionCleared, this, &ButtonEditDialog::clearButtonSlots);
-
-    connect(ui->toggleCheckBox, &QCheckBox::clicked, this, &ButtonEditDialog::changeToggleSetting);
-    connect(ui->turboCheckBox, &QCheckBox::clicked, this, &ButtonEditDialog::changeTurboSetting);
-    connect(ui->advancedPushButton, &QPushButton::clicked, this, &ButtonEditDialog::openAdvancedDialog);
-    connect(this, &ButtonEditDialog::advancedDialogOpened, ui->virtualKeyMouseTabWidget,
-            &VirtualKeyboardMouseWidget::establishVirtualKeyboardAdvancedSignalConnections);
-    connect(this, &ButtonEditDialog::advancedDialogOpened, ui->virtualKeyMouseTabWidget,
-            &VirtualKeyboardMouseWidget::establishVirtualMouseAdvancedSignalConnections);
-
-    refreshForLastBtn();
-}
-
-ButtonEditDialog::ButtonEditDialog(JoyButton *button, InputDevice *joystick, bool isNumKeypad, QWidget *parent)
-    : QDialog(parent, Qt::Window)
-    , helper()
-    , ui(new Ui::ButtonEditDialog)
-{
-    ui->setupUi(this);
-
-    withoutQuickSetDialog = true;
-    m_isNumKeypad = isNumKeypad;
-
-    if (m_isNumKeypad)
-    {
-        setMinimumSize(844, 480);
-    }
-
-    setAttribute(Qt::WA_DeleteOnClose);
-    setWindowTitle(tr("Choose your keyboard key"));
-    update();
-
-    instance = this;
-    lastJoyButton = button;
-    this->joystick = joystick;
-    currentQuickDialog = nullptr;
-
-    SetJoystick *currentset = joystick->getActiveSetJoystick();
-    currentset->release();
-    joystick->resetButtonDownCount();
-
-    setMinimumHeight(460);
-    setAttribute(Qt::WA_DeleteOnClose);
-    setWindowModality(Qt::WindowModal);
-
-    ignoreRelease = false;
-
-    PadderCommon::inputDaemonMutex.lock();
-
-    ui->virtualKeyMouseTabWidget->hide();
-    ui->virtualKeyMouseTabWidget->deleteLater();
-    ui->virtualKeyMouseTabWidget =
-        new VirtualKeyboardMouseWidget(joystick, &helper, m_isNumKeypad, currentQuickDialog, button, this);
-    ui->verticalLayout->insertWidget(1, ui->virtualKeyMouseTabWidget);
-
-    PadderCommon::inputDaemonMutex.unlock();
-
-    connect(qApp, &QApplication::focusChanged, this, &ButtonEditDialog::checkForKeyboardWidgetFocus);
-
-    connect(ui->virtualKeyMouseTabWidget, &VirtualKeyboardMouseWidget::selectionCleared, this,
-            &ButtonEditDialog::refreshSlotSummaryLabel);
-
     connect(this, &ButtonEditDialog::keyGrabbed, this, &ButtonEditDialog::processSlotAssignment);
     connect(this, &ButtonEditDialog::selectionCleared, this,
             &ButtonEditDialog::clearButtonSlots); //  used to clear button sets
 
     connect(ui->toggleCheckBox, &QCheckBox::clicked, this, &ButtonEditDialog::changeToggleSetting);
     connect(ui->turboCheckBox, &QCheckBox::clicked, this, &ButtonEditDialog::changeTurboSetting);
+    connect(ui->attachNumKeypadCheckbox, &QCheckBox::clicked, this, &ButtonEditDialog::changeNumKeypadSetting);
     connect(ui->advancedPushButton, &QPushButton::clicked, this, &ButtonEditDialog::openAdvancedDialog);
-    connect(this, &ButtonEditDialog::advancedDialogOpened, ui->virtualKeyMouseTabWidget,
-            &VirtualKeyboardMouseWidget::establishVirtualKeyboardAdvancedSignalConnections);
-    connect(this, &ButtonEditDialog::advancedDialogOpened, ui->virtualKeyMouseTabWidget,
-            &VirtualKeyboardMouseWidget::establishVirtualMouseAdvancedSignalConnections);
+    refreshForLastBtn();
+}
 
+ButtonEditDialog::ButtonEditDialog(JoyButton *button, InputDevice *joystick, bool isNumKeypad, QWidget *parent)
+    : ButtonEditDialog(joystick, isNumKeypad, parent)
+{
+
+    withoutQuickSetDialog = true;
+
+    lastJoyButton = button;
+
+    setupVirtualKeyboardMouseTabWidget();
     refreshForLastBtn();
 }
 
@@ -228,6 +156,27 @@ void ButtonEditDialog::keyPressEvent(QKeyEvent *event)
 
     if (!ignore)
         QDialog::keyPressEvent(event);
+}
+
+void ButtonEditDialog::setupVirtualKeyboardMouseTabWidget()
+{
+
+    PadderCommon::inputDaemonMutex.lock();
+
+    ui->virtualKeyMouseTabWidget->hide();
+    ui->virtualKeyMouseTabWidget->deleteLater();
+    ui->virtualKeyMouseTabWidget =
+        new VirtualKeyboardMouseWidget(joystick, &helper, m_isNumKeypad, currentQuickDialog, lastJoyButton, this);
+    ui->verticalLayout->insertWidget(1, ui->virtualKeyMouseTabWidget);
+
+    PadderCommon::inputDaemonMutex.unlock();
+
+    connect(ui->virtualKeyMouseTabWidget, &VirtualKeyboardMouseWidget::selectionCleared, this,
+            &ButtonEditDialog::refreshSlotSummaryLabel);
+    connect(this, &ButtonEditDialog::advancedDialogOpened, ui->virtualKeyMouseTabWidget,
+            &VirtualKeyboardMouseWidget::establishVirtualKeyboardAdvancedSignalConnections);
+    connect(this, &ButtonEditDialog::advancedDialogOpened, ui->virtualKeyMouseTabWidget,
+            &VirtualKeyboardMouseWidget::establishVirtualMouseAdvancedSignalConnections);
 }
 
 void ButtonEditDialog::keyReleaseEvent(QKeyEvent *event)
@@ -315,8 +264,8 @@ void ButtonEditDialog::keyReleaseEvent(QKeyEvent *event)
         }
 
     #else
-        int finalvirtual = 0;
-        int checkalias = 0;
+        finalvirtual = 0;
+        checkalias = 0;
         if (QApplication::platformName() == QStringLiteral("xcb"))
         {
             finalvirtual = AntKeyMapper::getInstance()->returnVirtualKey(event->key());
@@ -389,6 +338,14 @@ void ButtonEditDialog::changeTurboSetting()
         QMessageBox::information(
             this, tr("Last button"),
             tr("To change settings of turbo for last button, it must be at least one assignment from keyboard to gamepad"));
+}
+
+void ButtonEditDialog::changeNumKeypadSetting()
+{
+    m_isNumKeypad = ui->attachNumKeypadCheckbox->isChecked();
+    setupVirtualKeyboardMouseTabWidget();
+    refreshForLastBtn();
+    joystick->getSettings()->setValue("AttachNumKeypad", m_isNumKeypad ? "1" : "0");
 }
 
 void ButtonEditDialog::openAdvancedDialog()

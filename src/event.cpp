@@ -20,10 +20,10 @@
 #include <QApplication>
 #include <QCursor>
 #include <QDebug>
-#include <QDesktopWidget>
 #include <QFileInfo>
 #include <QMessageBox>
 #include <QProcess>
+#include <QScreen>
 #include <QStringList>
 #include <QVariant>
 #include <cmath>
@@ -31,7 +31,7 @@
 #include "event.h"
 #include "eventhandlerfactory.h"
 #include "globalvariables.h"
-#include "joybutton.h"
+#include "joybuttontypes/joybutton.h"
 #include "logger.h"
 
 #if defined(Q_OS_UNIX)
@@ -71,7 +71,7 @@ void fakeAbsMouseCoordinates(double springX, double springY, int width, int heig
     int destMidWidth = 0;
     int destMidHeight = 0;
 
-    QRect deskRect = PadderCommon::mouseHelperObj.getDesktopWidget()->screenGeometry(screen);
+    QRect deskRect = QGuiApplication::screens().at(screen)->geometry();
 
     screenWidth = deskRect.width();
     screenHeight = deskRect.height();
@@ -111,7 +111,8 @@ QString detectedScriptExt(QString file)
         QTextStream in(&inputFile);
         firstLine = in.readLine();
         inputFile.close();
-    }
+    } else
+        WARN() << "Could not open file: " << file;
 
     /*
      * shell scripts work, but I am not sure about other extensions
@@ -120,7 +121,7 @@ QString detectedScriptExt(QString file)
      * need to find another way
      */
 
-    if (fileinfo.completeSuffix() == "sh" || firstLine.contains("bin/bash"))
+    if (firstLine.contains("bin/bash"))
         return "/bin/sh";
     else if (fileinfo.completeSuffix() == "py" && firstLine.contains("python3"))
         return "python3";
@@ -160,20 +161,27 @@ void sendevent(JoyButtonSlot *slot, bool pressed)
             argumentsTempList = PadderCommon::parseArgumentsString(argumentsString);
         }
 
-        QProcess process;
+        qint64 pid = 0;
         QString process_executor = detectedScriptExt(slot->getTextData());
         if (process_executor.isEmpty())
-            process.setProgram(slot->getTextData());
-        else
         {
-            process.setProgram(process_executor);
+            process_executor = slot->getTextData();
+        } else
+        {
             argumentsTempList.prepend(slot->getTextData());
         }
+#if QT_VERSION >= QT_VERSION_CHECK(5, 10, 0)
+        QProcess process;
+        process.setProgram(process_executor);
         process.setArguments(argumentsTempList);
 
         process.setWorkingDirectory(QFileInfo(slot->getTextData()).absoluteDir().path());
-        qint64 pid = 0;
+
         bool success = process.startDetached(&pid);
+#else
+        bool success = QProcess::startDetached(process_executor, argumentsTempList,
+                                               QFileInfo(slot->getTextData()).absoluteDir().path(), &pid);
+#endif
         if (success)
             qInfo() << "Command: " << slot->getTextData() << " " << argumentsString
                     << " executed successfully with pid: " << pid;
@@ -207,8 +215,7 @@ void sendSpringEventRefactor(PadderCommon::springModeInfo *fullSpring, PadderCom
         PadderCommon::mouseHelperObj.mouseTimer.stop();
         BaseEventHandler *handler = EventHandlerFactory::getInstance()->handler();
 
-        if ((fullSpring->screen >= -1) &&
-            (fullSpring->screen >= PadderCommon::mouseHelperObj.getDesktopWidget()->screenCount()))
+        if ((fullSpring->screen >= -1) && (fullSpring->screen >= QGuiApplication::screens().count()))
         {
             fullSpring->screen = -1;
         }
@@ -303,13 +310,13 @@ void sendSpringEvent(PadderCommon::springModeInfo *fullSpring, PadderCommon::spr
         int currentMouseX = 0;
         int currentMouseY = 0;
 
-        if ((fullSpring->screen >= -1) &&
-            (fullSpring->screen >= PadderCommon::mouseHelperObj.getDesktopWidget()->screenCount()))
+        if ((fullSpring->screen >= -1) && (fullSpring->screen >= QGuiApplication::screens().count()))
         {
             fullSpring->screen = -1;
         }
 
-        QRect deskRect = PadderCommon::mouseHelperObj.getDesktopWidget()->screenGeometry(fullSpring->screen);
+        QRect deskRect = fullSpring->screen == -1 ? QGuiApplication::primaryScreen()->geometry()
+                                                  : QGuiApplication::screens().at(fullSpring->screen)->geometry();
 
         width = deskRect.width();
         height = deskRect.height();

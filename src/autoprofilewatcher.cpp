@@ -26,9 +26,6 @@
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
-#include <QListIterator>
-#include <QSetIterator>
-#include <QStringListIterator>
 
 #if defined(Q_OS_UNIX) && defined(WITH_X11)
     #include "x11extras.h"
@@ -162,28 +159,44 @@ void AutoProfileWatcher::runAppCheck()
 #endif
         currentAppWindowTitle = nowWindowName;
 
-        qInfo() << QObject::tr("Active window changed to: Title = \"%1\", "
-                               "Class = \"%2\", Program = \"%3\" or \"%4\".")
+        qInfo() << QString("Active window changed to: Title = \"%1\", "
+                           "Class = \"%2\", Program = \"%3\" or \"%4\".")
                        .arg(nowWindowName, nowWindowClass, appLocation, baseAppFileName);
 
         QSet<AutoProfileInfo *> fullSet;
 
         if (!appLocation.isEmpty() && getAppProfileAssignments().contains(appLocation))
         {
+#if QT_VERSION >= QT_VERSION_CHECK(5, 14, 0)
+            auto templist = getAppProfileAssignments().value(appLocation);
+            QSet<AutoProfileInfo *> tempSet(templist.begin(), templist.end());
+#else
             QSet<AutoProfileInfo *> tempSet;
             tempSet = getAppProfileAssignments().value(appLocation).toSet();
+#endif
             fullSet.unite(tempSet);
         } else if (!baseAppFileName.isEmpty() && getAppProfileAssignments().contains(baseAppFileName))
         {
+#if QT_VERSION >= QT_VERSION_CHECK(5, 14, 0)
+            auto templist = getAppProfileAssignments().value(baseAppFileName);
+            QSet<AutoProfileInfo *> tempSet(templist.begin(), templist.end());
+#else
             QSet<AutoProfileInfo *> tempSet;
             tempSet = getAppProfileAssignments().value(baseAppFileName).toSet();
+#endif
             fullSet.unite(tempSet);
         }
 
         if (!nowWindowClass.isEmpty() && getWindowClassProfileAssignments().contains(nowWindowClass))
         {
+
+#if QT_VERSION >= QT_VERSION_CHECK(5, 14, 0)
+            auto templist = getWindowClassProfileAssignments().value(nowWindowClass);
+            QSet<AutoProfileInfo *> tempSet(templist.begin(), templist.end());
+#else
             QSet<AutoProfileInfo *> tempSet;
             tempSet = getWindowClassProfileAssignments().value(nowWindowClass).toSet();
+#endif
             fullSet.unite(tempSet);
         }
 
@@ -197,11 +210,8 @@ void AutoProfileWatcher::runAppCheck()
 
                 bool hasOnePartName = false;
 
-                QListIterator<AutoProfileInfo *> iterList(iter.value());
-                while (iterList.hasNext())
+                for (auto autoInfo : iter.value())
                 {
-                    AutoProfileInfo *autoInfo = iterList.next();
-
                     if (autoInfo->isPartialState())
                     {
                         hasOnePartName = true;
@@ -219,7 +229,11 @@ void AutoProfileWatcher::runAppCheck()
 
                         QSet<AutoProfileInfo *> tempSet;
                         QList<AutoProfileInfo *> list = iter.value();
+#if QT_VERSION >= QT_VERSION_CHECK(5, 14, 0)
+                        tempSet = QSet<AutoProfileInfo *>(list.begin(), list.end());
+#else
                         tempSet = list.toSet();
+#endif
                         fullSet = fullSet.unite(tempSet);
 
                     } else
@@ -235,8 +249,13 @@ void AutoProfileWatcher::runAppCheck()
                     {
                         qDebug() << "WINDOW: \"" << nowWindowName << "\" is equal to hash key: \"" << iter.key() << "\"";
 
+#if QT_VERSION >= QT_VERSION_CHECK(5, 14, 0)
+                        auto templist = getWindowNameProfileAssignments().value(nowWindowName);
+                        QSet<AutoProfileInfo *> tempSet(templist.begin(), templist.end());
+#else
                         QSet<AutoProfileInfo *> tempSet;
                         tempSet = getWindowNameProfileAssignments().value(nowWindowName).toSet();
+#endif
                         fullSet = fullSet.unite(tempSet);
 
                     } else
@@ -250,10 +269,8 @@ void AutoProfileWatcher::runAppCheck()
         QHash<QString, int> highestMatchCount;
         QHash<QString, AutoProfileInfo *> highestMatches;
 
-        QSetIterator<AutoProfileInfo *> fullSetIter(fullSet);
-        while (fullSetIter.hasNext())
+        for (auto &&info : fullSet)
         {
-            AutoProfileInfo *info = fullSetIter.next();
             if (info->isActive())
             {
                 int numProps = 0;
@@ -292,11 +309,8 @@ void AutoProfileWatcher::runAppCheck()
             }
         }
 
-        QHashIterator<QString, AutoProfileInfo *> highIter(highestMatches);
-
-        while (highIter.hasNext())
+        for (auto &&info : highestMatches)
         {
-            AutoProfileInfo *info = highIter.next().value();
             getUniqeIDSetLocal().insert(info->getUniqueID());
             emit foundApplicableProfile(info);
         }
@@ -308,13 +322,8 @@ void AutoProfileWatcher::runAppCheck()
                 emit foundApplicableProfile(allDefaultInfo);
             }
 
-            QHashIterator<QString, AutoProfileInfo *> iter(getDefaultProfileAssignments());
-
-            while (iter.hasNext())
+            for (auto &&info : getDefaultProfileAssignments())
             {
-                iter.next();
-                AutoProfileInfo *info = iter.value();
-
                 if (info->isActive() && !getUniqeIDSetLocal().contains(info->getUniqueID()))
                 {
                     emit foundApplicableProfile(info);
@@ -356,11 +365,8 @@ void AutoProfileWatcher::syncProfileAssignment()
     }
 
     // Handle device specific Default profile assignments
-    QStringListIterator iter(registeredUniques);
-
-    while (iter.hasNext())
+    for (auto &&tempkey : registeredUniques)
     {
-        QString tempkey = iter.next();
         QString uniqueID = QString(tempkey).replace("UniqueID", "");
         QString profile = settings->value(QString("DefaultAutoProfile-%1/Profile").arg(uniqueID), "").toString();
         QString active = settings->value(QString("DefaultAutoProfile-%1/Active").arg(uniqueID), "").toString();
@@ -504,41 +510,42 @@ void AutoProfileWatcher::syncProfileAssignment()
 void AutoProfileWatcher::clearProfileAssignments()
 {
     QSet<AutoProfileInfo *> terminateProfiles;
-    QListIterator<QList<AutoProfileInfo *>> iterDelete(appProfileAssignments.values());
 
-    while (iterDelete.hasNext())
+    for (const auto &profileList : appProfileAssignments.values())
     {
-        QList<AutoProfileInfo *> templist = iterDelete.next();
-        terminateProfiles.unite(templist.toSet());
+#if QT_VERSION >= QT_VERSION_CHECK(5, 14, 0)
+        terminateProfiles.unite(QSet<AutoProfileInfo *>(profileList.begin(), profileList.end()));
+#else
+        terminateProfiles.unite(profileList.toSet());
+#endif
     }
 
     appProfileAssignments.clear();
 
-    QListIterator<QList<AutoProfileInfo *>> iterClassDelete(windowClassProfileAssignments.values());
-
-    while (iterClassDelete.hasNext())
+    for (const auto &profileList : windowClassProfileAssignments.values())
     {
-        QList<AutoProfileInfo *> templist = iterClassDelete.next();
-        terminateProfiles.unite(templist.toSet());
+#if QT_VERSION >= QT_VERSION_CHECK(5, 14, 0)
+        terminateProfiles.unite(QSet<AutoProfileInfo *>(profileList.begin(), profileList.end()));
+#else
+        terminateProfiles.unite(profileList.toSet());
+#endif
     }
 
     windowClassProfileAssignments.clear();
 
-    QListIterator<QList<AutoProfileInfo *>> iterNameDelete(windowNameProfileAssignments.values());
-
-    while (iterNameDelete.hasNext())
+    for (const auto &profileList : windowNameProfileAssignments.values())
     {
-        QList<AutoProfileInfo *> templist = iterNameDelete.next();
-        terminateProfiles.unite(templist.toSet());
+#if QT_VERSION >= QT_VERSION_CHECK(5, 14, 0)
+        terminateProfiles.unite(QSet<AutoProfileInfo *>(profileList.begin(), profileList.end()));
+#else
+        terminateProfiles.unite(profileList.toSet());
+#endif
     }
 
     windowNameProfileAssignments.clear();
 
-    QSetIterator<AutoProfileInfo *> iterTerminate(terminateProfiles);
-
-    while (iterTerminate.hasNext())
+    for (auto *info : terminateProfiles)
     {
-        AutoProfileInfo *info = iterTerminate.next();
         if (info != nullptr)
         {
             info->deleteLater();
@@ -546,11 +553,8 @@ void AutoProfileWatcher::clearProfileAssignments()
         }
     }
 
-    QListIterator<AutoProfileInfo *> iterDefaultsDelete(getDefaultProfileAssignments().values());
-
-    while (iterDefaultsDelete.hasNext())
+    for (auto *info : getDefaultProfileAssignments().values())
     {
-        AutoProfileInfo *info = iterDefaultsDelete.next();
         if (info != nullptr)
         {
             info->deleteLater();

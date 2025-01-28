@@ -3,7 +3,7 @@
         <file>images/antimicrox.png</file>
         <file>images/axis.png</file>
         <file>images/button.png</file>
-        <file>images/controllermap.png</file>
+        <file>images/controllermap.svg</file>
 
         <file>images/actions/wiki.png</file>
         <file>images/actions/about_qt.png</file>
@@ -41,6 +41,12 @@
         <file>images/actions/view_fullscreen.png</file>
         <file>images/actions/view_refresh.png</file>
         <file>images/actions/view_restore.png</file>
+
+        <file>images/actions/battery-empty.png</file>
+        <file>images/actions/battery-full.png</file>
+        <file>images/actions/battery-good-charging.png</file>
+        <file>images/actions/battery-good.png</file>
+        <file>images/actions/battery-low.png</file>
 
         <file>images/battery-low-level.png</file>
         <file>images/actions/join_slots.png</file>

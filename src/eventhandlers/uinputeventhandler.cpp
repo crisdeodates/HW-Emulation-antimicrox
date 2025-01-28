@@ -26,7 +26,6 @@
 #include <QFileInfo>
 #include <QMessageBox>
 #include <QStringList>
-#include <QStringListIterator>
 #include <QTimer>
 
 #include <antkeymapper.h>
@@ -121,6 +120,11 @@ void UInputEventHandler::initDevice(int &device, QString name, bool &result)
     {
         if (name == "springMouseFileHandler")
         {
+            QString detected_xdg_session = qgetenv("XDG_SESSION_TYPE");
+            if (detected_xdg_session == "x11")
+                qWarning()
+                    << "uinput event handle may not work properly with absolute mouse events (like spring mouse) for X11";
+            // https://stackoverflow.com/questions/5190921/simulating-absolute-mouse-movements-in-linux-using-uinput
             setSpringMouseEvents(device);
             createUInputSpringMouseDevice(device);
         } else if (name == "mouseFileHandler")
@@ -194,7 +198,7 @@ void UInputEventHandler::sendMouseButtonEvent(JoyButtonSlot *slot, bool pressed)
     {
         if (code <= 3)
         {
-            unsigned int tempcode = BTN_LEFT;
+            unsigned int tempcode;
             switch (code)
             {
             case 3: {
@@ -229,13 +233,13 @@ void UInputEventHandler::sendMouseButtonEvent(JoyButtonSlot *slot, bool pressed)
         {
             if (pressed)
             {
-                write_uinput_event(mouseFileHandler, EV_REL, REL_HWHEEL, 1);
+                write_uinput_event(mouseFileHandler, EV_REL, REL_HWHEEL, -1);
             }
         } else if (code == 7)
         {
             if (pressed)
             {
-                write_uinput_event(mouseFileHandler, EV_REL, REL_HWHEEL, -1);
+                write_uinput_event(mouseFileHandler, EV_REL, REL_HWHEEL, 1);
             }
         } else if (code == 8)
         {
@@ -274,16 +278,6 @@ void UInputEventHandler::sendMouseSpringEvent(int xDis, int yDis, int width, int
     }
 }
 
-void UInputEventHandler::sendMouseSpringEvent(int xDis, int yDis)
-{
-    if ((xDis >= -1.0) && (xDis <= 1.0) && (yDis >= -1.0) && (yDis <= 1.0))
-    {
-        int fx = ceil(32767 * xDis);
-        int fy = ceil(32767 * yDis);
-        sendMouseAbsEvent(fx, fy, -1);
-    }
-}
-
 int UInputEventHandler::openUInputHandle()
 {
     int filehandle = -1;
@@ -294,17 +288,14 @@ int UInputEventHandler::openUInputHandle()
     locations.append("/dev/misc/uinput");
 
     QString possibleLocation;
-    QStringListIterator iter(locations);
 
-    while (iter.hasNext())
+    for (auto &&temp : locations)
     {
-        QString temp = iter.next();
         QFileInfo tempFileInfo(temp);
-
         if (tempFileInfo.exists())
         {
             possibleLocation = temp;
-            iter.toBack();
+            break;
         }
     }
 
@@ -374,10 +365,6 @@ void UInputEventHandler::setSpringMouseEvents(int filehandle)
     ioctl(filehandle, UI_SET_ABSBIT, ABS_X);
     ioctl(filehandle, UI_SET_ABSBIT, ABS_Y);
     ioctl(filehandle, UI_SET_KEYBIT, BTN_TOUCH);
-
-    // BTN_TOOL_PEN is required for the mouse to be seen as an
-    // absolute mouse as opposed to a relative mouse.
-    ioctl(filehandle, UI_SET_KEYBIT, BTN_TOOL_PEN);
 }
 
 void UInputEventHandler::populateKeyCodes(int filehandle)
@@ -574,13 +561,10 @@ void UInputEventHandler::sendTextEntryEvent(QString maintext)
 
             if (tempList.size() > 0)
             {
-                QListIterator<unsigned int> tempiter(tempList);
-                tempiter.toBack();
-
-                while (tempiter.hasPrevious())
+                for (auto iter = tempList.crbegin(); iter != tempList.crend(); ++iter)
                 {
-                    unsigned int currentcode = tempiter.previous();
-                    bool sync = !tempiter.hasPrevious() ? true : false;
+                    unsigned int currentcode = *iter;
+                    bool sync = std::next(iter) == tempList.crend();
                     write_uinput_event(keyboardFileHandler, EV_KEY, currentcode, 0, sync);
                 }
             }

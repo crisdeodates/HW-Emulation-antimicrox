@@ -36,6 +36,7 @@ const int GlobalVariables::JoyButton::DEFAULTTURBOINTERVAL = 0;
 const bool GlobalVariables::JoyButton::DEFAULTUSETURBO = false;
 const int GlobalVariables::JoyButton::DEFAULTMOUSESPEEDX = 50;
 const int GlobalVariables::JoyButton::DEFAULTMOUSESPEEDY = 50;
+const int GlobalVariables::JoyButton::MAXMOUSESPEED = 300;
 const int GlobalVariables::JoyButton::DEFAULTSETSELECTION = -1;
 const int GlobalVariables::JoyButton::DEFAULTSPRINGWIDTH = 0;
 const int GlobalVariables::JoyButton::DEFAULTSPRINGHEIGHT = 0;
@@ -100,8 +101,8 @@ const int GlobalVariables::InputDevice::RAISEDDEADZONE = 20000;
 const int GlobalVariables::InputDevice::DEFAULTKEYREPEATDELAY = 660; // 660 ms
 const int GlobalVariables::InputDevice::DEFAULTKEYREPEATRATE = 40;   // 40 ms. 25 times per second
 
-// QRegExp GlobalVariables::InputDevice::emptyGUID("^[0]+$");
-QRegExp GlobalVariables::InputDevice::emptyUniqueID("^[0]+$");
+// QRegularExpression GlobalVariables::InputDevice::emptyGUID("^[0]+$");
+QRegularExpression GlobalVariables::InputDevice::emptyUniqueID("^[0]+$");
 
 // ---- JOYAXIS ---- //
 
@@ -115,6 +116,13 @@ const int GlobalVariables::JoyAxis::AXISMAXZONE = 32000;
 const float GlobalVariables::JoyAxis::JOYSPEED = 20.0;
 
 const QString GlobalVariables::JoyAxis::xmlName = "axis";
+
+const int GlobalVariables::HapticTriggerPs5::CLICKSTRENGTH = 256;
+const int GlobalVariables::HapticTriggerPs5::RIGIDSTRENGTH = 128;
+const int GlobalVariables::HapticTriggerPs5::RIGIDGRADIENTSTRENGTH = 256;
+const int GlobalVariables::HapticTriggerPs5::VIBRATIONSTRENGTH = 64;
+const int GlobalVariables::HapticTriggerPs5::RANGE = 320;
+const int GlobalVariables::HapticTriggerPs5::FREQUENCY = 32;
 
 #ifdef WITH_X11
 
@@ -177,9 +185,21 @@ const double GlobalVariables::JoyControlStick::PI = acos(-1.0);
 // Set default values used for stick properties.
 const int GlobalVariables::JoyControlStick::DEFAULTDEADZONE = 8000;
 const int GlobalVariables::JoyControlStick::DEFAULTMAXZONE = GlobalVariables::GameControllerTrigger::AXISMAXZONE;
+const int GlobalVariables::JoyControlStick::DEFAULTMODIFIERZONE = 8000;
+const bool GlobalVariables::JoyControlStick::DEFAULTMODIFIERZONEINVERTED = false;
 const int GlobalVariables::JoyControlStick::DEFAULTDIAGONALRANGE = 45;
 const double GlobalVariables::JoyControlStick::DEFAULTCIRCLE = 0.0;
 const int GlobalVariables::JoyControlStick::DEFAULTSTICKDELAY = 0;
+
+// ---- JoySensor ---- //
+
+const double GlobalVariables::JoySensor::ACCEL_MIN = -90.0;
+const double GlobalVariables::JoySensor::ACCEL_MAX = 90.0;
+const double GlobalVariables::JoySensor::GYRO_MIN = -360.0;
+const double GlobalVariables::JoySensor::GYRO_MAX = 360.0;
+const double GlobalVariables::JoySensor::DEFAULTDEADZONE = 20;
+const int GlobalVariables::JoySensor::DEFAULTDIAGONALRANGE = 45;
+const unsigned int GlobalVariables::JoySensor::DEFAULTSENSORDELAY = 0;
 
 // ---- JoyButtonSlot ---- //
 
@@ -202,6 +222,10 @@ const QString GlobalVariables::JoyControlStickButton::xmlName = "stickbutton";
 // ---- JoyControlStickModifierButton ---- //
 
 const QString GlobalVariables::JoyControlStickModifierButton::xmlName = "stickmodifierbutton";
+
+// ---- JoySensorButton ---- //
+
+const QString GlobalVariables::JoySensorButton::xmlName = "sensorbutton";
 
 // ---- JoyDPadButton ---- //
 

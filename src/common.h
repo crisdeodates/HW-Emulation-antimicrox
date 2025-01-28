@@ -60,24 +60,6 @@ static QString findWinDefaultConfigPath()
     return temp;
 }
 
-static QString findWinConfigPath(QString configFileName)
-{
-    QString temp;
-    QFileInfo localConfigInfo(findWinLocalConfigPath().append("/").append(configFileName));
-    QFileInfo systemConfigInfo(findWinSystemConfigPath().append("/").append(configFileName));
-    if (localConfigInfo.exists() && localConfigInfo.isWritable())
-    {
-        temp = localConfigInfo.absoluteFilePath();
-    } else if (systemConfigInfo.exists() && systemConfigInfo.isWritable())
-    {
-        temp = systemConfigInfo.absoluteFilePath();
-    } else
-    {
-        temp = findWinDefaultConfigPath().append("/").append(configFileName);
-    }
-
-    return temp;
-}
 #endif
 
 namespace PadderCommon {
@@ -163,7 +145,7 @@ const QString sdlVersionUsed = ([] {
 
 const QString sdlVersionCompiled = ([] {
     SDL_version compver;
-    SDL_GetVersion(&compver);
+    SDL_VERSION(&compver);
     return QString("%1.%2.%3").arg(compver.major).arg(compver.minor).arg(compver.patch);
 })();
 
@@ -171,7 +153,6 @@ extern QWaitCondition waitThisOut;
 extern QMutex sdlWaitMutex;
 extern QMutex inputDaemonMutex;
 extern bool editingBindings;
-extern QReadWriteLock editingLock;
 extern MouseHelper mouseHelperObj;
 
 QString preferredProfileDir(AntiMicroSettings *settings);
@@ -181,7 +162,24 @@ void reloadTranslations(QTranslator *translator, QTranslator *appTranslator, QSt
 void lockInputDevices();
 void unlockInputDevices();
 
+/**
+ * @brief Universal method for loading icons if current theme does not have this icon, then look for replacement in resources
+ *
+ * @param name - name of used icon like "document-open" according to spec
+ * https://specifications.freedesktop.org/icon-naming-spec/icon-naming-spec-latest.html
+ * @return QIcon
+ */
+QIcon loadIcon(QString name);
+
+/**
+ * @brief Universal method for loading icons
+ *
+ * @param name - name of used icon
+ * @param fallback_location - location of icon loaded when icon described by name not found
+ * @return QIcon
+ */
 QIcon loadIcon(const QString &name, const QString &fallback_location);
+
 /*!
  * \brief Returns the "human-readable" name of the given profile.
  */
@@ -191,6 +189,8 @@ inline QString getProfileName(QFileInfo &profile)
 
     return retVal;
 }
+
+void log_system_config();
 } // namespace PadderCommon
 
 Q_DECLARE_METATYPE(QThread *)

@@ -156,6 +156,8 @@ GameControllerMappingDialog::GameControllerMappingDialog(InputDevice *device, An
     connect(this, &GameControllerMappingDialog::finished, this, &GameControllerMappingDialog::enableButtonEvents);
 
     PadderCommon::unlockInputDevices();
+    qInfo() << "Opened GameControllerMappingDialog for mapping device: " << device->getSDLName() << " (#"
+            << device->getRealJoyNumber() << ")";
 }
 
 GameControllerMappingDialog::~GameControllerMappingDialog() { delete ui; }
@@ -317,6 +319,8 @@ void GameControllerMappingDialog::dpadAssign(int dpad, int buttonindex)
 
 void GameControllerMappingDialog::saveChanges()
 {
+    qInfo() << "Saving changes for GameControllerMappingDialog for device: " << device->getSDLName() << " (#"
+            << device->getRealJoyNumber() << ")";
     QString mappingString = generateSDLMappingString();
 
     settings->getLock()->lock();
@@ -341,7 +345,6 @@ void GameControllerMappingDialog::populateGameControllerBindings(GameController 
 {
     if (controller != nullptr)
     {
-        qDebug() << "Controller has " << controller->getNumberButtons() << " buttons";
 
         for (int i = 0; i < controller->getNumberButtons(); i++)
         {
@@ -360,8 +363,6 @@ void GameControllerMappingDialog::populateGameControllerBindings(GameController 
                 item->setData(Qt::UserRole, tempvariant);
             }
         }
-
-        qDebug() << "Controller has " << controller->getNumberAxes() << " axes";
 
         for (int i = 0; i < controller->getNumberAxes(); i++)
         {

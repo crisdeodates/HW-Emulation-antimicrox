@@ -25,6 +25,7 @@
 #include "joybuttonstatusbox.h"
 #include "joybuttontypes/joydpadbutton.h"
 #include "joydpad.h"
+#include "joysensor.h"
 
 #include <QDebug>
 #include <QGridLayout>
@@ -54,28 +55,39 @@ JoystickStatusWindow::JoystickStatusWindow(InputDevice *joystick, QWidget *paren
     {
     case SDL_JOYSTICK_POWER_EMPTY:
 
-        ui->batteryValueLabel->setText("Empty");
+        ui->batteryValueLabel->setText(tr("Empty"));
         break;
 
     case SDL_JOYSTICK_POWER_LOW:
 
-        ui->batteryValueLabel->setText("Low");
+        ui->batteryValueLabel->setText(tr("Low"));
         break;
 
     case SDL_JOYSTICK_POWER_MEDIUM:
 
-        ui->batteryValueLabel->setText("Medium");
+        ui->batteryValueLabel->setText(tr("Medium"));
         break;
 
     case SDL_JOYSTICK_POWER_FULL:
+    case SDL_JOYSTICK_POWER_MAX:
 
-        ui->batteryValueLabel->setText("Full");
+        ui->batteryValueLabel->setText(tr("Full"));
+        break;
+
+    case SDL_JOYSTICK_POWER_UNKNOWN:
+
+        ui->batteryValueLabel->setText(tr("Unknown"));
+        break;
+
+    case SDL_JOYSTICK_POWER_WIRED:
+
+        ui->batteryValueLabel->setText(tr("Wired"));
         break;
 
     default:
 
-        ui->batteryLabel->hide();
-        ui->batteryValueLabel->hide();
+        ui->batteryValueLabel->setText(tr("Different: %1").arg(powerLevel));
+        WARN() << "Unknown battery level:" << powerLevel;
         break;
     }
 
@@ -84,6 +96,15 @@ JoystickStatusWindow::JoystickStatusWindow(InputDevice *joystick, QWidget *paren
     ui->joystickAxesLabel->setText(QString::number(joystick->getNumberRawAxes()));
     ui->joystickButtonsLabel->setText(QString::number(joystick->getNumberRawButtons()));
     ui->joystickHatsLabel->setText(QString::number(joystick->getNumberRawHats()));
+
+    if (joystick->hasRawSensor(ACCELEROMETER) && joystick->hasRawSensor(GYROSCOPE))
+        ui->joystickSensorsLabel->setText(tr("Accelerometer + Gyroscope"));
+    else if (joystick->hasRawSensor(ACCELEROMETER))
+        ui->joystickSensorsLabel->setText(tr("Accelerometer"));
+    else if (joystick->hasRawSensor(GYROSCOPE))
+        ui->joystickSensorsLabel->setText(tr("Gyroscope"));
+    else
+        ui->joystickSensorsLabel->setText(tr("None"));
 
     joystick->getActiveSetJoystick()->setIgnoreEventState(true);
     joystick->getActiveSetJoystick()->release();
@@ -178,6 +199,69 @@ JoystickStatusWindow::JoystickStatusWindow(InputDevice *joystick, QWidget *paren
 
     ui->hatsGroupBox->setLayout(hatsBox);
 
+    QVBoxLayout *sensorsBox = new QVBoxLayout();
+    sensorsBox->setSpacing(4);
+
+    for (int i = 0; i < SENSOR_COUNT; ++i)
+    {
+        JoySensorType type = static_cast<JoySensorType>(i);
+        JoySensor *sensor = joystick->getActiveSetJoystick()->getSensor(type);
+        QProgressBar **axes;
+        if (type == ACCELEROMETER)
+            axes = m_accel_axes;
+        else
+            axes = m_gyro_axes;
+
+        if (sensor != nullptr)
+        {
+            for (int i = 0; i < 3; ++i)
+            {
+                QHBoxLayout *hbox = new QHBoxLayout();
+
+                QLabel *axisLabel = new QLabel();
+                axes[i] = new QProgressBar();
+                if (type == ACCELEROMETER)
+                {
+                    axes[i]->setMinimum(GlobalVariables::JoySensor::ACCEL_MIN * 1000);
+                    axes[i]->setMaximum(GlobalVariables::JoySensor::ACCEL_MAX * 1000);
+                } else
+                {
+                    axes[i]->setMinimum(GlobalVariables::JoySensor::GYRO_MIN * 1000);
+                    axes[i]->setMaximum(GlobalVariables::JoySensor::GYRO_MAX * 1000);
+                }
+                axes[i]->setFormat("%v");
+                if (i == 0)
+                {
+                    axisLabel->setText(QString("%1 X").arg(sensor->sensorTypeName()));
+                    axes[i]->setValue(sensor->getXCoordinate());
+                } else if (i == 1)
+                {
+                    axisLabel->setText(QString("%1 Y").arg(sensor->sensorTypeName()));
+                    axes[i]->setValue(sensor->getYCoordinate());
+                } else
+                {
+                    axisLabel->setText(QString("%1 Z").arg(sensor->sensorTypeName()));
+                    axes[i]->setValue(sensor->getZCoordinate());
+                }
+                hbox->addWidget(axisLabel);
+                hbox->addWidget(axes[i]);
+                hbox->addSpacing(10);
+                sensorsBox->addLayout(hbox);
+            }
+
+            if (type == ACCELEROMETER)
+            {
+                connect(sensor, &JoySensor::moved, this, &JoystickStatusWindow::updateAccelerometerValues);
+            } else
+            {
+                connect(sensor, &JoySensor::moved, this, &JoystickStatusWindow::updateGyroscopeValues);
+            }
+        }
+    }
+
+    sensorsBox->addSpacerItem(new QSpacerItem(20, 20, QSizePolicy::Preferred, QSizePolicy::Fixed));
+    ui->sensorsGroupBox->setLayout(sensorsBox);
+
     //    QString guidString = joystick->getGUIDString();
     //    if (!guidString.isEmpty())
     //    {
@@ -234,5 +318,27 @@ void JoystickStatusWindow::restoreButtonStates(int code)
 }
 
 void JoystickStatusWindow::obliterate() { this->done(QDialogButtonBox::DestructiveRole); }
+
+/**
+ * @brief Accelerometer "moved" event handler
+ *  Updates raw accelerometer values on the screen.
+ */
+void JoystickStatusWindow::updateAccelerometerValues(float valueX, float valueY, float valueZ)
+{
+    m_accel_axes[0]->setValue(valueX * 1000);
+    m_accel_axes[1]->setValue(valueY * 1000);
+    m_accel_axes[2]->setValue(valueZ * 1000);
+}
+
+/**
+ * @brief Gyroscope "moved" event handler
+ *  Updates raw gyroscope values on the screen.
+ */
+void JoystickStatusWindow::updateGyroscopeValues(float valueX, float valueY, float valueZ)
+{
+    m_gyro_axes[0]->setValue(JoySensor::radToDeg(valueX) * 1000);
+    m_gyro_axes[1]->setValue(JoySensor::radToDeg(valueY) * 1000);
+    m_gyro_axes[2]->setValue(JoySensor::radToDeg(valueZ) * 1000);
+}
 
 InputDevice *JoystickStatusWindow::getJoystick() const { return joystick; }

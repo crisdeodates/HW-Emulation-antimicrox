@@ -21,8 +21,11 @@
 
 #include <QApplication>
 #include <QDebug>
+#include <QDirIterator>
 #include <QLibraryInfo>
 #include <QReadWriteLock>
+#include <QRegularExpression>
+
 #ifdef Q_OS_WIN
     #include <QStandardPaths>
 #endif
@@ -87,7 +90,11 @@ QStringList arguments(const int &argc, char **argv)
 QStringList parseArgumentsString(QString tempString)
 {
     bool inside = (!tempString.isEmpty() && tempString.at(0) == QChar('"'));
-    QStringList tempList = tempString.split(QRegExp("\""), QString::SkipEmptyParts);
+#if QT_VERSION >= QT_VERSION_CHECK(5, 15, 0)
+    QStringList tempList = tempString.split(QRegularExpression("\""), Qt::SkipEmptyParts);
+#else
+    QStringList tempList = tempString.split(QRegularExpression("\""), QString::SkipEmptyParts);
+#endif
     QStringList finalList = QStringList();
     QStringListIterator iter(tempList);
 
@@ -98,8 +105,11 @@ QStringList parseArgumentsString(QString tempString)
         if (inside)
             finalList.append(temp);
         else
-            finalList.append(temp.split(QRegExp("\\s+"), QString::SkipEmptyParts));
-
+#if QT_VERSION >= QT_VERSION_CHECK(5, 15, 0)
+            finalList.append(temp.split(QRegularExpression("\\s+"), Qt::SkipEmptyParts));
+#else
+            finalList.append(temp.split(QRegularExpression("\\s+"), QString::SkipEmptyParts));
+#endif
         inside = !inside;
     }
 
@@ -119,7 +129,7 @@ void reloadTranslations(QTranslator *translator, QTranslator *appTranslator, QSt
     // Remove old Qt translation strings
     qApp->removeTranslator(appTranslator);
 
-    // Load new Qt translation strings
+// Load new Qt translation strings
 #if defined(Q_OS_UNIX)
     translator->load(QString("qt_").append(language), QLibraryInfo::location(QLibraryInfo::TranslationsPath));
 #elif defined(Q_OS_WIN)
@@ -133,7 +143,7 @@ void reloadTranslations(QTranslator *translator, QTranslator *appTranslator, QSt
 
     qApp->installTranslator(appTranslator);
 
-    // Load application specific translation strings
+// Load application specific translation strings
 #if defined(Q_OS_UNIX)
     translator->load("antimicrox_" + language,
                      QApplication::applicationDirPath().append("/../share/antimicrox/translations"));
@@ -148,13 +158,7 @@ void reloadTranslations(QTranslator *translator, QTranslator *appTranslator, QSt
 void lockInputDevices() { sdlWaitMutex.lock(); }
 
 void unlockInputDevices() { sdlWaitMutex.unlock(); }
-/**
- * @brief Universal method for loading icons
- *
- * @param name - name of used icon
- * @param fallback_location - location of icon loaded when icon described by name not found
- * @return QIcon
- */
+
 QIcon loadIcon(const QString &name, const QString &fallback_location)
 {
     qDebug() << " Application theme has icon named: " << name << " " << QIcon::hasThemeIcon(name);
@@ -166,10 +170,57 @@ QIcon loadIcon(const QString &name, const QString &fallback_location)
     return QIcon::fromTheme(name, QIcon(fallback_location));
 }
 
+QIcon loadIcon(QString name)
+{
+    bool has_icon = QIcon::hasThemeIcon(name);
+    qDebug() << " Application theme has icon named: " << name << " " << has_icon;
+    if (has_icon)
+        return QIcon::fromTheme(name);
+
+    QDirIterator it(":images/", QDirIterator::Subdirectories);
+    QString fallback_location = "";
+    // search also for variants with underscore like document_save.png for document-save
+    QRegularExpression regex = QRegularExpression(".*" + name.replace(QChar('-'), "[_-]") + "\\.(svg|png)");
+    while (it.hasNext())
+    {
+        QString value = it.next();
+        if (value.contains(regex))
+        {
+            fallback_location = value;
+            qDebug() << "Found fallback icon: " << value << " for name: " << name << "and regex: " << regex;
+            break;
+        }
+    }
+
+    QFileInfo f(fallback_location);
+    if (!f.exists())
+    {
+        qWarning() << "file: " << fallback_location << " does not exist!";
+    }
+    return QIcon::fromTheme(name, QIcon(fallback_location));
+}
+
+void log_system_config()
+{
+    VERBOSE() << "AntiMicroX version: " << PadderCommon::programVersion
+#ifdef ANTIMICROX_PKG_VERSION
+              << " Package: " << ANTIMICROX_PKG_VERSION
+#endif
+#ifdef QT_DEBUG
+              << " Type: Debug"
+#else
+              << " Type: Release"
+#endif
+        ;
+    VERBOSE() << "SDL version: " << PadderCommon::sdlVersionUsed << " (Compiled with: " << PadderCommon::sdlVersionCompiled
+              << ")";
+    VERBOSE() << QString("Host OS: %1 Version: %2 Architecture: %3")
+                     .arg(QSysInfo::productType(), QSysInfo::productVersion(), QSysInfo::currentCpuArchitecture());
+}
+
 QWaitCondition waitThisOut;
 QMutex sdlWaitMutex;
 QMutex inputDaemonMutex;
-QReadWriteLock editingLock;
 bool editingBindings = false;
 MouseHelper mouseHelperObj;
 } // namespace PadderCommon

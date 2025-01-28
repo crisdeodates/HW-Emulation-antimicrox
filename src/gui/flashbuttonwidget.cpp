@@ -47,8 +47,6 @@ void FlashButtonWidget::flash()
 
     this->style()->unpolish(this);
     this->style()->polish(this);
-
-    emit flashed(isflashing);
 }
 
 void FlashButtonWidget::unflash()
@@ -57,8 +55,6 @@ void FlashButtonWidget::unflash()
 
     this->style()->unpolish(this);
     this->style()->polish(this);
-
-    emit flashed(isflashing);
 }
 
 void FlashButtonWidget::refreshLabel()
@@ -91,8 +87,11 @@ void FlashButtonWidget::paintEvent(QPaintEvent *event)
     QFontMetrics fm(tempScaledFont);
 
     bool reduce = false;
-
+#if QT_VERSION >= QT_VERSION_CHECK(5, 11, 0)
+    while ((this->width() < fm.horizontalAdvance(text())) && (tempScaledFont.pointSize() >= 7))
+#else
     while ((this->width() < fm.width(text())) && (tempScaledFont.pointSize() >= 7))
+#endif
     {
         tempScaledFont.setPointSize(tempScaledFont.pointSize() - 1);
         painter.setFont(tempScaledFont);

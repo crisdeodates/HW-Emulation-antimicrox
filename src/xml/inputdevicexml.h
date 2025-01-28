@@ -18,6 +18,7 @@
 #ifndef INPUTDEVICEXML_H
 #define INPUTDEVICEXML_H
 
+#include <QMutex>
 #include <QObject>
 
 class QXmlStreamReader;
@@ -25,6 +26,14 @@ class QXmlStreamWriter;
 class InputDevice;
 class AntiMicroSettings;
 
+/**
+ * @brief Generic InputDevice XML serialization/deserialization helper class
+ *  Reads data from the supplied InputDevice object and writes it to XML or
+ *  reads data from an QXmlStreamReader and writes it to the InputDevice object.
+ *
+ *  After serializing or deserializing the device data, it reads/writes
+ *  all SetJoysticks.
+ */
 class InputDeviceXml : public QObject
 {
     Q_OBJECT
@@ -33,11 +42,17 @@ class InputDeviceXml : public QObject
 
   public slots:
 
-    virtual void readConfig(QXmlStreamReader *xml);  // InputDeviceXml class
-    virtual void writeConfig(QXmlStreamWriter *xml); // InputDeviceXml class
+    void readConfig(QXmlStreamReader *xml);  // InputDeviceXml class
+    void writeConfig(QXmlStreamWriter *xml); // InputDeviceXml class
+
+  signals:
+    void readConfigSig(QXmlStreamReader *xml);
 
   private:
     InputDevice *m_inputDevice;
+
+    // ensures that readConfig returns when reading is finished even for reading in different thread
+    QMutex m_mutex_read_config;
 };
 
 #endif // INPUTDEVICEXML_H

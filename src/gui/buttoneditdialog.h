@@ -60,6 +60,8 @@ class ButtonEditDialog : public QDialog
     virtual void keyPressEvent(QKeyEvent *event);
 
   private:
+    void setupVirtualKeyboardMouseTabWidget();
+
     ButtonEditDialogHelper helper;
     Ui::ButtonEditDialog *ui;
     ButtonEditDialogHelper &getHelperLocal();
@@ -87,6 +89,7 @@ class ButtonEditDialog : public QDialog
     void refreshSlotSummaryLabel();
     void changeToggleSetting();
     void changeTurboSetting();
+    void changeNumKeypadSetting();
     void openAdvancedDialog();
     void closedAdvancedDialog();
     void createTempSlot(int keycode, int alias);

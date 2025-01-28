@@ -1,5 +1,5 @@
 /* antimicrox Gamepad to KB+M event mapper
- * Copyright (C) 2020 Jagoda Górska <juliagoda.pl@protonmail>
+ * Copyright (C) 2022 Max Maisel <max.maisel@posteo.de>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -15,25 +15,19 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef GAMECONTROLLERTRIGGERXML_H
-#define GAMECONTROLLERTRIGGERXML_H
+#include "joysensorfactory.h"
+#include "joyaccelerometersensor.h"
+#include "joygyroscopesensor.h"
+#include "setjoystick.h"
 
-#include "xml/joyaxisxml.h"
-
-class GameControllerTrigger;
-
-class GameControllerTriggerXml : public JoyAxisXml
+namespace JoySensorFactory {
+JoySensor *build(JoySensorType type, double rate, int originset, SetJoystick *parent_set, QObject *parent)
 {
-  public:
-    explicit GameControllerTriggerXml(GameControllerTrigger *gameContrTrigger, QObject *parent = 0);
-
-    void readJoystickConfig(QXmlStreamReader *xml);
-    virtual void writeConfig(QXmlStreamWriter *xml);
-
-  private:
-    GameControllerTrigger *m_gameContrTrigger;
-    JoyButtonXml *joyButtonXmlNAxis;
-    JoyButtonXml *joyButtonXmlPAxis;
-};
-
-#endif // GAMECONTROLLERTRIGGERXML_H
+    if (type == ACCELEROMETER)
+        return new JoyAccelerometerSensor(rate, originset, parent_set, parent);
+    else if (type == GYROSCOPE)
+        return new JoyGyroscopeSensor(originset, parent_set, parent);
+    else
+        return nullptr;
+}
+} // namespace JoySensorFactory

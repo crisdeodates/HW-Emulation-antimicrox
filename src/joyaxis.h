@@ -22,8 +22,10 @@
 #include <QList>
 #include <QObject>
 
+#include "haptictriggermodeps5.h"
 #include "joybuttontypes/joyaxisbutton.h"
 
+class HapticTriggerPs5;
 class JoyControlStick;
 class SetJoystick;
 class JoyAxisButton;
@@ -31,13 +33,17 @@ class QXmlStreamReader;
 class QXmlStreamWriter;
 class JoyAxis;
 
+/**
+ * @brief Represents single axis of of joystick (or other input)
+ *
+ */
 class JoyAxis : public QObject
 {
     Q_OBJECT
 
   public:
     explicit JoyAxis(int index, int originset, SetJoystick *parentSet, QObject *parent);
-    ~JoyAxis();
+    virtual ~JoyAxis();
 
     enum ThrottleTypes
     {
@@ -112,14 +118,10 @@ class JoyAxis : public QObject
 
     double getButtonsEasingDuration();
 
-    void setAxisMinCal(int value);
-    int getAxisMinCal();
-
-    void setAxisMaxCal(int value);
-    int getAxisMaxCal();
-
-    void setAxisCenterCal(int value);
-    int getAxisCenterCal();
+    bool isCalibrated() const;
+    void resetCalibration();
+    void getCalibration(double *offset, double *gain) const;
+    void setCalibration(double offset, double gain);
 
     virtual QString getAxisName();
     virtual int getDefaultDeadZone();
@@ -153,6 +155,10 @@ class JoyAxis : public QObject
     static const ThrottleTypes DEFAULTTHROTTLE;
     int calculateThrottledValue(int value);
 
+    virtual bool hasHapticTrigger() const;
+    virtual HapticTriggerPs5 *getHapticTrigger() const;
+    virtual void setHapticTriggerMode(HapticTriggerModePs5);
+
   protected:
     void createDeskEvent(bool ignoresets = false); // JoyAxisEvent class
     void adjustRange();
@@ -173,9 +179,6 @@ class JoyAxis : public QObject
     int currentThrottledValue;
     int currentThrottledDeadValue;
     int m_index;
-    int axis_center_cal;
-    int axis_min_cal;
-    int axis_max_cal;
     int lastKnownThottledValue;
     int lastKnownRawValue;
     int pendingValue;
@@ -198,6 +201,7 @@ class JoyAxis : public QObject
     void throttleChanged();
     void axisNameChanged();
     void propertyUpdated();
+    void hapticTriggerChanged();
 
   public slots:
     virtual void reset();
@@ -219,6 +223,10 @@ class JoyAxis : public QObject
     JoyControlStick *m_stick;
 
     SetJoystick *m_parentSet;
+
+    bool m_calibrated;
+    double m_offset;
+    double m_gain;
 
     void resetPrivateVars();
 };

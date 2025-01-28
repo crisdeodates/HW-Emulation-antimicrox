@@ -15,6 +15,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <QVarLengthArray>
 #include <cmath>
 #include <qt_windows.h>
 
@@ -110,8 +111,7 @@ QString WinSendInputEventHandler::getName() { return QString("SendInput"); }
 
 QString WinSendInputEventHandler::getIdentifier() { return QString("sendinput"); }
 
-void WinSendInputEventHandler::sendMouseSpringEvent(unsigned int xDis, unsigned int yDis, unsigned int width,
-                                                    unsigned int height)
+void WinSendInputEventHandler::sendMouseSpringEvent(int xDis, int yDis, int width, int height)
 {
     if (width > 0 && height > 0)
     {
@@ -166,15 +166,16 @@ void WinSendInputEventHandler::sendTextEntryEvent(QString maintext)
 
             tempList.append(temp.virtualkey);
 
-            if (tempList.size() > 0)
-            {
-                INPUT tempBuffer[tempList.size()] = {0};
+            int inputCount = tempList.size();
 
-                QListIterator<unsigned int> tempiter(tempList);
+            if (inputCount > 0)
+            {
+                QVarLengthArray<INPUT> tempBuffer(inputCount);
+
                 unsigned int j = 0;
-                while (tempiter.hasNext())
+                for (auto iter = tempList.cbegin(); iter != tempList.cend(); ++iter, ++j)
                 {
-                    unsigned int tempcode = tempiter.next();
+                    unsigned int tempcode = *iter;
                     unsigned int scancode = WinExtras::scancodeFromVirtualKey(tempcode);
                     int extended = (scancode & WinExtras::EXTENDED_FLAG) != 0;
                     int tempflags = extended ? KEYEVENTF_EXTENDEDKEY : 0;
@@ -186,18 +187,16 @@ void WinSendInputEventHandler::sendTextEntryEvent(QString maintext)
 
                     tempBuffer[j].ki.wVk = tempcode;
                     tempBuffer[j].ki.dwFlags = tempflags;
-                    j++;
                 }
 
-                SendInput(j, tempBuffer, sizeof(INPUT));
+                SendInput(j, tempBuffer.data(), sizeof(INPUT));
 
-                tempiter.toBack();
                 j = 0;
-                memset(tempBuffer, 0, sizeof(tempBuffer));
+                memset(tempBuffer.data(), 0, sizeof(INPUT) * inputCount);
                 // INPUT tempBuffer2[tempList.size()] = {0};
-                while (tempiter.hasPrevious())
+                for (auto iter = tempList.crbegin(); iter != tempList.crend(); ++iter, ++j)
                 {
-                    unsigned int tempcode = tempiter.previous();
+                    unsigned int tempcode = *iter;
                     unsigned int scancode = WinExtras::scancodeFromVirtualKey(tempcode);
                     int extended = (scancode & WinExtras::EXTENDED_FLAG) != 0;
                     int tempflags = extended ? KEYEVENTF_EXTENDEDKEY : 0;
@@ -209,10 +208,9 @@ void WinSendInputEventHandler::sendTextEntryEvent(QString maintext)
 
                     tempBuffer[j].ki.wVk = tempcode;
                     tempBuffer[j].ki.dwFlags = tempflags | KEYEVENTF_KEYUP;
-                    j++;
                 }
 
-                SendInput(j, tempBuffer, sizeof(INPUT));
+                SendInput(j, tempBuffer.data(), sizeof(INPUT));
             }
         }
     }

@@ -39,7 +39,6 @@
 #include <QApplication>
 #include <QComboBox>
 #include <QDebug>
-#include <QDesktopWidget>
 #include <QDir>
 #include <QFileDialog>
 #include <QLabel>
@@ -113,6 +112,7 @@ MainSettingsDialog::MainSettingsDialog(AntiMicroSettings *settings, QList<InputD
         populateAutoProfiles();
         fillAllAutoProfilesTable();
         fillGUIDComboBox();
+        ui->autoProfileDisabledInfo->hide();
     } else
     {
         delete ui->categoriesListWidget->item(3);
@@ -140,24 +140,12 @@ MainSettingsDialog::MainSettingsDialog(AntiMicroSettings *settings, QList<InputD
 #ifdef Q_OS_WIN
     BaseEventHandler *handler = EventHandlerFactory::getInstance()->handler();
 
-    if (QSysInfo::windowsVersion() >= QSysInfo::WV_VISTA)
+    QFile tempFile(RUNATSTARTUPLOCATION);
+    if (tempFile.exists())
     {
-        // Handle Windows Vista and later
-        QFile tempFile(RUNATSTARTUPLOCATION);
-        if (tempFile.exists())
-        {
-            ui->launchAtWinStartupCheckBox->setChecked(true);
-        }
-    } else
-    {
-        // Handle Windows XP
-        QSettings autoRunReg(RUNATSTARTUPREGKEY, QSettings::NativeFormat);
-        QString autoRunEntry = autoRunReg.value("antimicrox", "").toString();
-        if (!autoRunEntry.isEmpty())
-        {
-            ui->launchAtWinStartupCheckBox->setChecked(true);
-        }
+        ui->launchAtWinStartupCheckBox->setChecked(true);
     }
+
 #else
     ui->launchAtWinStartupCheckBox->setVisible(false);
 
@@ -170,8 +158,11 @@ MainSettingsDialog::MainSettingsDialog(AntiMicroSettings *settings, QList<InputD
     {
         ui->traySingleProfileListCheckBox->setChecked(true);
     }
-
+#ifdef Q_OS_LINUX
+    bool minimizeToTaskBar = settings->value("MinimizeToTaskbar", true).toBool();
+#else
     bool minimizeToTaskBar = settings->value("MinimizeToTaskbar", false).toBool();
+#endif
     if (minimizeToTaskBar)
     {
         ui->minimizeTaskbarCheckBox->setChecked(true);
@@ -557,42 +548,25 @@ void MainSettingsDialog::saveNewSettings()
     {
         saveAutoProfileSettings();
     }
-
+#else
+    saveAutoProfileSettings();
 #endif
 
     settings->getLock()->lock();
 
 #ifdef Q_OS_WIN
-    if (QSysInfo::windowsVersion() >= QSysInfo::WV_VISTA)
-    {
-        // Handle Windows Vista and later
-        QFile tempFile(RUNATSTARTUPLOCATION);
+    QFile tempFile(RUNATSTARTUPLOCATION);
 
-        if (ui->launchAtWinStartupCheckBox->isChecked() && !tempFile.exists())
-        {
-            if (tempFile.open(QFile::WriteOnly))
-            {
-                QFile currentAppLocation(qApp->applicationFilePath());
-                currentAppLocation.link(QFileInfo(tempFile).absoluteFilePath());
-            }
-        } else if (tempFile.exists() && QFileInfo(tempFile).isWritable())
-        {
-            tempFile.remove();
-        }
-    } else
+    if (ui->launchAtWinStartupCheckBox->isChecked() && !tempFile.exists())
     {
-        // Handle Windows XP
-        QSettings autoRunReg(RUNATSTARTUPREGKEY, QSettings::NativeFormat);
-        QString autoRunEntry = autoRunReg.value("antimicrox", "").toString();
-
-        if (ui->launchAtWinStartupCheckBox->isChecked())
+        if (tempFile.open(QFile::WriteOnly))
         {
-            QString nativeFilePath = QDir::toNativeSeparators(qApp->applicationFilePath());
-            autoRunReg.setValue("antimicrox", nativeFilePath);
-        } else if (!autoRunEntry.isEmpty())
-        {
-            autoRunReg.remove("antimicrox");
+            QFile currentAppLocation(qApp->applicationFilePath());
+            currentAppLocation.link(QFileInfo(tempFile).absoluteFilePath());
         }
+    } else if (tempFile.exists() && QFileInfo(tempFile).isWritable())
+    {
+        tempFile.remove();
     }
 
     BaseEventHandler *handler = EventHandlerFactory::getInstance()->handler();
@@ -1678,44 +1652,47 @@ void MainSettingsDialog::transferEditsToCurrentTableRow(AddEditAutoProfileDialog
 void MainSettingsDialog::addNewAutoProfile(AddEditAutoProfileDialog *dialog)
 { // AddEditAutoProfileDialog *dialog = static_cast<AddEditAutoProfileDialog*>(sender());
     AutoProfileInfo *info = dialog->getAutoProfile();
-    bool found = false;
 
     if (info->isCurrentDefault() && defaultAutoProfiles.contains(info->getUniqueID()))
     {
-        found = true;
+        WARN() << "Unable to add autoprofile with ID:" << info->getUniqueID()
+               << " because it already exists and belongs to default autoprofiles";
+        return;
     }
 
-    if (!found)
+    if (info->isCurrentDefault())
     {
-        if (info->isCurrentDefault())
+        if (!info->getUniqueID().isEmpty() && !info->getExe().isEmpty())
         {
-            if (!info->getUniqueID().isEmpty() && !info->getExe().isEmpty())
+            defaultAutoProfiles.insert(info->getUniqueID(), info);
+            defaultList.append(info);
+        }
+    } else
+    {
+        if (!info->getUniqueID().isEmpty() || !info->getExe().isEmpty())
+        {
+            profileList.append(info);
+
+            if (info->getUniqueID() != "all")
             {
-                defaultAutoProfiles.insert(info->getUniqueID(), info);
-                defaultList.append(info);
+                QList<AutoProfileInfo *> tempDevProfileList;
+
+                if (deviceAutoProfiles.contains(info->getUniqueID()))
+                    tempDevProfileList = deviceAutoProfiles.value(info->getUniqueID());
+
+                tempDevProfileList.append(info);
+                deviceAutoProfiles.insert(info->getUniqueID(), tempDevProfileList);
             }
         } else
         {
-            if (!info->getUniqueID().isEmpty() && !info->getExe().isEmpty())
-            {
-                profileList.append(info);
-
-                if (info->getUniqueID() != "all")
-                {
-                    QList<AutoProfileInfo *> tempDevProfileList;
-
-                    if (deviceAutoProfiles.contains(info->getUniqueID()))
-                        tempDevProfileList = deviceAutoProfiles.value(info->getUniqueID());
-
-                    tempDevProfileList.append(info);
-                    deviceAutoProfiles.insert(info->getUniqueID(), tempDevProfileList);
-                }
-            }
+            WARN() << "Unable to add because neither ID, nor Executable is defined";
         }
-
-        fillGUIDComboBox();
-        changeDeviceForProfileTable(ui->devicesComboBox->currentIndex());
     }
+
+    fillGUIDComboBox();
+    changeDeviceForProfileTable(ui->devicesComboBox->currentIndex());
+
+    INFO() << "Successfully added auto profile: " << info->toString();
 }
 
 void MainSettingsDialog::autoProfileButtonsActiveState(bool enabled)
@@ -1808,9 +1785,7 @@ void MainSettingsDialog::fillSpringScreenPresets()
     ui->springScreenComboBox->clear();
     ui->springScreenComboBox->addItem(tr("Default"), QVariant(GlobalVariables::AntimicroSettings::defaultSpringScreen));
 
-    QDesktopWidget deskWid;
-
-    for (int i = 0; i < deskWid.screenCount(); i++)
+    for (int i = 0; i < QGuiApplication::screens().count(); i++)
     {
         ui->springScreenComboBox->addItem(QString(":%1").arg(i), QVariant(i));
     }

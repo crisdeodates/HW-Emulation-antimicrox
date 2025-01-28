@@ -19,7 +19,7 @@
 #include "joybuttonmousehelper.h"
 
 #include "globalvariables.h"
-#include "joybutton.h"
+#include "joybuttontypes/joybutton.h"
 
 #include <QDebug>
 #include <QList>
@@ -100,11 +100,9 @@ void JoyButtonMouseHelper::mouseEvent()
 void JoyButtonMouseHelper::resetButtonMouseDistances()
 {
     QList<JoyButton *> *buttonList = JoyButton::getPendingMouseButtons();
-    QListIterator<JoyButton *> iter(*buttonList);
 
-    while (iter.hasNext())
+    for (JoyButton *temp : *buttonList)
     {
-        JoyButton *temp = iter.next();
         temp->resetAccelerationDistances();
     }
 }

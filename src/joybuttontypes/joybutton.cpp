@@ -56,7 +56,7 @@ QList<PadderCommon::springModeInfo> JoyButton::springXSpeeds;
 QList<PadderCommon::springModeInfo> JoyButton::springYSpeeds;
 
 // Temporary test object to test old mouse time behavior.
-QTime JoyButton::testOldMouseTime;
+QElapsedTimer JoyButton::testOldMouseTime;
 
 // time when minislots next to each other in thread pool are waiting to execute function
 // at the same time
@@ -73,7 +73,7 @@ QList<JoyButton *> JoyButton::pendingMouseButtons;
 
 // IT CAN BE HERE
 // LOOK FOR JoyCycle and put JoyMix next to the slots types
-JoyButton::JoyButton(int index, int originset, SetJoystick *parentSet, QObject *parent)
+JoyButton::JoyButton(int sdl_button_index, int originset, SetJoystick *parentSet, QObject *parent)
     : QObject(parent)
 {
     m_vdpad = nullptr;
@@ -115,9 +115,10 @@ JoyButton::JoyButton(int index, int originset, SetJoystick *parentSet, QObject *
     // Make sure to call before calling reset
     resetAllProperties();
 
-    m_index = index;
+    m_index_sdl = sdl_button_index;
     m_originset = originset;
     quitEvent = true;
+    DEBUG() << "Created button with ID: " << m_index_sdl << " For set: " << originset << " Name: " << getName();
 }
 
 JoyButton::~JoyButton()
@@ -157,9 +158,9 @@ void JoyButton::vdpadPassEvent(bool pressed, bool ignoresets)
         isButtonPressed = pressed;
 
         if (isButtonPressed)
-            emit clicked(m_index);
+            emit clicked(m_index_sdl);
         else
-            emit released(m_index);
+            emit released(m_index_sdl);
 
         if (!ignoresets)
             m_vdpad->queueJoyEvent(ignoresets);
@@ -168,10 +169,15 @@ void JoyButton::vdpadPassEvent(bool pressed, bool ignoresets)
     }
 }
 
+/**
+ * @brief Activates mapped slots and generates QT events
+ *  which highlight pressed controller buttons.
+ */
 void JoyButton::joyEvent(bool pressed, bool ignoresets)
 {
     if (Logger::isDebugEnabled())
-        DEBUG() << "Processing joyEvent for: " << getName();
+        DEBUG() << "Processing JoyButton::joyEvent for: " << getName() << " SDL index: " << m_index_sdl
+                << " className: " << metaObject()->className();
 
     if ((m_vdpad != nullptr) && !pendingEvent)
     {
@@ -180,21 +186,21 @@ void JoyButton::joyEvent(bool pressed, bool ignoresets)
     {
         isButtonPressed = pressed;
         if (isButtonPressed)
-            emit clicked(m_index);
+            emit clicked(m_index_sdl);
         else
-            emit released(m_index);
+            emit released(m_index_sdl);
     } else
     {
         if (pressed != isDown)
         {
             if (pressed)
             {
-                emit clicked(m_index);
+                emit clicked(m_index_sdl);
                 if (updateInitAccelValues)
                     oldAccelMulti = updateOldAccelMulti = accelTravel = 0.0;
             } else
             {
-                emit released(m_index);
+                emit released(m_index_sdl);
             }
 
             bool activePress = pressed;
@@ -346,18 +352,18 @@ void JoyButton::startSequenceOfPressActive(bool isTurbo, QString debugText)
 }
 
 /**
- * @brief Get 0 indexed number of button
+ * @brief Get 0 indexed number of SDL button index
  * @return 0 indexed button index number
  */
-int JoyButton::getJoyNumber() { return m_index; }
+int JoyButton::getJoyNumber() { return m_index_sdl; }
 
 /**
  * @brief Get a 1 indexed number of button
  * @return 1 indexed button index number
  */
-int JoyButton::getRealJoyNumber() const { return m_index + 1; }
+int JoyButton::getRealJoyNumber() const { return m_index_sdl + 1; }
 
-void JoyButton::setJoyNumber(int index) { m_index = index; }
+void JoyButton::setJoyNumber(int index) { m_index_sdl = index; }
 
 void JoyButton::setToggle(bool toggle)
 {
@@ -397,7 +403,7 @@ void JoyButton::resetPrivVars()
 void JoyButton::reset(int index)
 {
     JoyButton::reset();
-    m_index = index;
+    m_index_sdl = index;
 }
 
 bool JoyButton::getToggleState() { return m_toggle; }
@@ -659,9 +665,8 @@ void JoyButton::activateMiniSlots(JoyButtonSlot *slot, JoyButtonSlot *mix)
     int tempcode = slot->getSlotCode();
     JoyButtonSlot::JoySlotInputAction mode = slot->getSlotMode();
 
-    switch (mode)
+    if (mode == JoyButtonSlot::JoyKeyboard)
     {
-    case JoyButtonSlot::JoyKeyboard: {
         sendKeybEvent(slot, true);
 
         getActiveSlotsLocal().append(slot);
@@ -679,9 +684,6 @@ void JoyButton::activateMiniSlots(JoyButtonSlot *slot, JoyButtonSlot *mix)
 
             lastActiveKey = nullptr;
         }
-
-        break;
-    }
     }
 }
 
@@ -962,6 +964,8 @@ void JoyButton::addEachSlotToActives(JoyButtonSlot *slot, int &i, bool &delaySeq
 
         break;
     }
+    default:
+        break;
     }
 }
 
@@ -976,7 +980,7 @@ void JoyButton::slotSetChange()
         // Ensure that a change to the current set is not attempted.
         if (setChangeIndex != m_originset)
         {
-            emit released(m_index);
+            emit released(m_index_sdl);
             emit setChangeActivated(setChangeIndex);
         }
     }
@@ -1138,7 +1142,7 @@ void JoyButton::mouseEvent()
 
                             // Determine the multiplier to use for the current maximum mouse speed
                             // based on how much time has passed.
-                            double elapsedDiff = 1.0;
+                            double elapsedDiff;
                             if ((easingDuration > 0.0) && ((easingElapsed * .001) < easingDuration))
                             {
                                 elapsedDiff = ((easingElapsed * .001) / easingDuration);
@@ -1289,7 +1293,7 @@ void JoyButton::mouseEvent()
                         }
 
                         double tempAccel = currentAccelMultiTemp;
-                        double elapsedDiff = 1.0;
+                        double elapsedDiff;
 
                         if ((elapsedDuration > 0.0) && ((elapsedElapsed * 0.001) < elapsedDuration))
                         {
@@ -1303,7 +1307,6 @@ void JoyButton::mouseEvent()
                             updateOldAccelMulti = currentAccelMulti;
                         } else
                         {
-                            elapsedDiff = 1.0;
                             currentAccelMulti = 0.0;
                             updateOldAccelMulti = 0.0;
                             accelTravel = 0.0;
@@ -2390,7 +2393,7 @@ QList<JoyButtonSlot *> const &JoyButton::getActiveSlots() { return activeSlots; 
 
 void JoyButton::setMouseSpeedX(int speed)
 {
-    if ((speed >= 1) && (speed <= 300))
+    if ((speed >= 1) && (speed <= GlobalVariables::JoyButton::MAXMOUSESPEED))
     {
         mouseSpeedX = speed;
         emit propertyUpdated();
@@ -2401,7 +2404,7 @@ int JoyButton::getMouseSpeedX() { return mouseSpeedX; }
 
 void JoyButton::setMouseSpeedY(int speed)
 {
-    if ((speed >= 1) && (speed <= 300))
+    if ((speed >= 1) && (speed <= GlobalVariables::JoyButton::MAXMOUSESPEED))
     {
         mouseSpeedY = speed;
         emit propertyUpdated();
@@ -2434,11 +2437,11 @@ void JoyButton::setChangeSetCondition(SetChangeCondition condition, bool passive
         if ((condition == SetChangeWhileHeld) || (condition == SetChangeTwoWay))
         {
             // Set new condition
-            emit setAssignmentChanged(m_index, setSelection, condition);
+            emit setAssignmentChanged(m_index_sdl, setSelection, condition);
         } else if ((setSelectionCondition == SetChangeWhileHeld) || (setSelectionCondition == SetChangeTwoWay))
         {
             // Remove old condition
-            emit setAssignmentChanged(m_index, setSelection, SetChangeDisabled);
+            emit setAssignmentChanged(m_index_sdl, setSelection, SetChangeDisabled);
         }
 
         setSelectionCondition = condition;
@@ -2461,6 +2464,10 @@ void JoyButton::setChangeSetCondition(SetChangeCondition condition, bool passive
 
 JoyButton::SetChangeCondition JoyButton::getChangeSetCondition() { return setSelectionCondition; }
 
+/**
+ * @brief Checks if this button is currently active
+ * @returns True if the button is pressed, false otherwise
+ */
 bool JoyButton::getButtonState() { return isButtonPressed; }
 
 int JoyButton::getOriginSet() { return m_originset; }
@@ -2584,7 +2591,7 @@ void JoyButton::restartAllForSetChange()
     isButtonPressedQueue.clear();
     ignoreSetQueue.clear();
 
-    emit released(m_index);
+    emit released(m_index_sdl);
     emit setChangeActivated(setSelection);
 }
 
@@ -3061,13 +3068,14 @@ void JoyButton::removeAssignedSlot(int index)
 
 void JoyButton::clearSlotsEventReset(bool clearSignalEmit)
 {
-    QWriteLocker tempAssignLocker(&assignmentsLock);
-
+    assignmentsLock.lockForWrite();
     resetSlotsProp();
     stopTimers(false);
     releaseActiveSlots();
     clearAssignedSlots(clearSignalEmit);
     clearQueues();
+    assignmentsLock.unlock();
+    buildActiveZoneSummaryString();
     DEBUG() << "all current slots and previous slots ale cleared";
 }
 
@@ -3478,7 +3486,7 @@ bool JoyButton::isDefault()
     value = value && (setSelectionCondition == DEFAULTSETCONDITION);
     value = value && (getAssignedSlots()->isEmpty());
     value = value && (mouseMode == DEFAULTMOUSEMODE);
-    value = value && (mouseCurve == DEFAULTMOUSECURVE);
+    value = value && (mouseCurve == getDefaultMouseCurve());
     value = value && (springWidth == GlobalVariables::JoyButton::DEFAULTSPRINGWIDTH);
     value = value && (springHeight == GlobalVariables::JoyButton::DEFAULTSPRINGHEIGHT);
     value = value && qFuzzyCompare(sensitivity, GlobalVariables::JoyButton::DEFAULTSENSITIVITY);
@@ -3500,6 +3508,13 @@ bool JoyButton::isDefault()
 
     return value;
 }
+
+/**
+ * @brief Returns the default mouse curve for this JoyButton type.
+ *  Can be overwritten by subclasses.
+ * @returns Default mouse curve
+ */
+JoyButton::JoyMouseCurve JoyButton::getDefaultMouseCurve() const { return DEFAULTMOUSECURVE; }
 
 void JoyButton::setIgnoreEventState(bool ignore) { ignoreEvents = ignore; }
 
@@ -3568,12 +3583,7 @@ void JoyButton::setActionName(QString tempName)
     }
 }
 
-QString JoyButton::getActionName()
-{
-    qDebug() << "Action name is: " << actionName;
-
-    return actionName;
-}
+QString JoyButton::getActionName() { return actionName; }
 
 void JoyButton::setButtonName(QString tempName)
 {
@@ -3612,7 +3622,7 @@ QString JoyButton::getDefaultButtonName() { return defaultButtonName; }
  *     send a cursor mode mouse event to the display server.
  */
 void JoyButton::moveMouseCursor(int &movedX, int &movedY, int &movedElapsed, QList<double> *mouseHistoryX,
-                                QList<double> *mouseHistoryY, QTime *testOldMouseTime, QTimer *staticMouseEventTimer,
+                                QList<double> *mouseHistoryY, QElapsedTimer *testOldMouseTime, QTimer *staticMouseEventTimer,
                                 int mouseRefreshRate, int mouseHistorySize, QList<JoyButton::mouseCursorInfo> *cursorXSpeeds,
                                 QList<JoyButton::mouseCursorInfo> *cursorYSpeeds, double &cursorRemainderX,
                                 double &cursorRemainderY, double weightModifier, int idleMouseRefrRate,
@@ -3730,12 +3740,15 @@ void JoyButton::moveMouseCursor(int &movedX, int &movedY, int &movedElapsed, QLi
     cursorYSpeeds->clear();
 }
 
+/**
+ * @brief Combines mouse movement distances from multiple mouse mappings.
+ * @param[in,out] finalAx Combined mouse distance from previous iteration. Updated by this function.
+ * @param[in] infoAx Next mouse event to join into finalAx.
+ */
 void JoyButton::distanceForMovingAx(double &finalAx, mouseCursorInfo infoAx)
 {
     if (!qFuzzyIsNull(infoAx.code))
-    {
-        finalAx = (infoAx.code < 0) ? qMin(infoAx.code, finalAx) : qMax(infoAx.code, finalAx);
-    }
+        finalAx += infoAx.code;
 }
 
 void JoyButton::adjustAxForCursor(QList<double> *mouseHistoryList, double &adjustedAx, double &cursorRemainder,
@@ -3789,8 +3802,6 @@ void JoyButton::moveSpringMouse(int &movedX, int &movedY, bool &hasMoved, int sp
 
         for (int i = (springXSpeeds->length() - 1); (i >= 0) && !complete; i--)
         {
-            double tempx = -2.0;
-            double tempy = -2.0;
             double tempSpringDeadX = 0.0;
             double tempSpringDeadY = 0.0;
 
@@ -3800,8 +3811,8 @@ void JoyButton::moveSpringMouse(int &movedX, int &movedY, bool &hasMoved, int sp
             infoX = springXSpeeds->takeLast();
             infoY = springYSpeeds->takeLast();
 
-            tempx = infoX.displacementX;
-            tempy = infoY.displacementY;
+            double tempx = infoX.displacementX;
+            double tempy = infoY.displacementY;
             tempSpringDeadX = infoX.springDeadX;
             tempSpringDeadY = infoY.springDeadY;
 
@@ -4197,7 +4208,7 @@ QList<PadderCommon::springModeInfo> *JoyButton::getSpringYSpeeds() { return &spr
 
 QTimer *JoyButton::getStaticMouseEventTimer() { return &staticMouseEventTimer; }
 
-QTime *JoyButton::getTestOldMouseTime() { return &testOldMouseTime; }
+QElapsedTimer *JoyButton::getTestOldMouseTime() { return &testOldMouseTime; }
 
 bool JoyButton::hasCursorEvents(QList<JoyButton::mouseCursorInfo> *cursorXSpeedsList,
                                 QList<JoyButton::mouseCursorInfo> *cursorYSpeedsList)
@@ -4244,7 +4255,8 @@ void JoyButton::setMouseHistorySize(int size, int maxMouseHistSize, int &mouseHi
  */
 void JoyButton::setMouseRefreshRate(int refresh, int &mouseRefreshRate, int idleMouseRefrRate,
                                     JoyButtonMouseHelper *mouseHelper, QList<double> *mouseHistoryX,
-                                    QList<double> *mouseHistoryY, QTime *testOldMouseTime, QTimer *staticMouseEventTimer)
+                                    QList<double> *mouseHistoryY, QElapsedTimer *testOldMouseTime,
+                                    QTimer *staticMouseEventTimer)
 {
     if ((refresh >= 1) && (refresh <= 16))
     {
@@ -4338,7 +4350,7 @@ void JoyButton::resetAllProperties()
     wheelSpeedX = GlobalVariables::JoyButton::DEFAULTWHEELX;
     wheelSpeedY = GlobalVariables::JoyButton::DEFAULTWHEELY;
     mouseMode = DEFAULTMOUSEMODE;
-    mouseCurve = DEFAULTMOUSECURVE;
+    mouseCurve = getDefaultMouseCurve();
     springWidth = GlobalVariables::JoyButton::DEFAULTSPRINGWIDTH;
     springHeight = GlobalVariables::JoyButton::DEFAULTSPRINGHEIGHT;
     sensitivity = GlobalVariables::JoyButton::DEFAULTSENSITIVITY;
@@ -4531,9 +4543,9 @@ int JoyButton::getSpringDeadCircleMultiplier() { return springDeadCircleMultipli
 
 double JoyButton::getCurrentSpringDeadCircle() { return (springDeadCircleMultiplier * 0.01); }
 
-void JoyButton::restartLastMouseTime(QTime *testOldMouseTime) { testOldMouseTime->restart(); }
+void JoyButton::restartLastMouseTime(QElapsedTimer *testOldMouseTime) { testOldMouseTime->restart(); }
 
-void JoyButton::setStaticMouseThread(QThread *thread, QTimer *staticMouseEventTimer, QTime *testOldMouseTime,
+void JoyButton::setStaticMouseThread(QThread *thread, QTimer *staticMouseEventTimer, QElapsedTimer *testOldMouseTime,
                                      int idleMouseRefrRate, JoyButtonMouseHelper *mouseHelper)
 {
     int oldInterval = staticMouseEventTimer->interval();
@@ -4556,7 +4568,7 @@ void JoyButton::indirectStaticMouseThread(QThread *thread, QTimer *staticMouseEv
 }
 
 bool JoyButton::shouldInvokeMouseEvents(QList<JoyButton *> *pendingMouseButtons, QTimer *staticMouseEventTimer,
-                                        QTime *testOldMouseTime)
+                                        QElapsedTimer *testOldMouseTime)
 {
     bool result = false;
 
@@ -4580,24 +4592,6 @@ void JoyButton::setExtraAccelerationCurve(JoyExtraAccelerationCurve curve)
 }
 
 JoyButton::JoyExtraAccelerationCurve JoyButton::getExtraAccelerationCurve() { return extraAccelCurve; }
-
-void JoyButton::copyExtraAccelerationState(JoyButton *srcButton)
-{
-    this->currentAccelMulti = srcButton->currentAccelMulti;
-    this->oldAccelMulti = srcButton->oldAccelMulti;
-    this->accelTravel = srcButton->accelTravel;
-
-    this->startingAccelerationDistance = srcButton->startingAccelerationDistance;
-    this->lastAccelerationDistance = srcButton->lastAccelerationDistance;
-    this->lastMouseDistance = srcButton->lastMouseDistance;
-
-    this->accelExtraDurationTime.setHMS(srcButton->accelExtraDurationTime.hour(), srcButton->accelExtraDurationTime.minute(),
-                                        srcButton->accelExtraDurationTime.second(),
-                                        srcButton->accelExtraDurationTime.msec());
-
-    updateMouseParams((srcButton->lastMouseDistance != 0.0), srcButton->updateStartingMouseDistance,
-                      srcButton->updateOldAccelMulti);
-}
 
 void JoyButton::setUpdateInitAccel(bool state) { this->updateInitAccelValues = state; }
 
